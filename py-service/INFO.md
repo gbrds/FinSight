@@ -1,0 +1,1 @@
+Test Python Manually -> python fetch_prices.py "AAPL,TSLA"
