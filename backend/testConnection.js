@@ -1,9 +1,12 @@
+// /backend/testConnection
+
 const { supabase } = require('./supabaseClient')
+require('dotenv').config()
 
 async function main() {
   try {
-    const email = ''   // Insert test login here
-    const password = ''
+    const email = process.env.USER_EMAIL
+    const password = process.env.USER_PASSWORD
 
     // 1️⃣ Login user
     const { data: loginData, error: loginError } =
