@@ -7,18 +7,39 @@ import { fileURLToPath } from "url";
 // ---------------------------
 // Resolve directory of this file
 // ---------------------------
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
 
 // Load .env located in backend root
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ path: path.resolve(dirname, "../../.env") });
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 // ---------------------------
-// Create Supabase client
+// Base client (anon/service) for general tasks
 // ---------------------------
-console.log("[SUPABASE CHECK]", process.env.SUPABASE_URL); // should print actual URL
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+// ---------------------------
+// Login user and return RLS-respecting client
+// ---------------------------
+export async function loginUser(email, password) {
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const { data: loginData, error: loginError } =
+    await client.auth.signInWithPassword({ email, password });
+
+  if (loginError) throw loginError;
+
+  // Return a client that uses the session access token
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${loginData.session.access_token}`,
+      },
+    },
+  });
+
+  return { userClient, userId: loginData.user.id };
+}
