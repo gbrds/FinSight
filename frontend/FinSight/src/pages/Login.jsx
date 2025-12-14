@@ -1,52 +1,55 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
 
-const Login = () => {
+const BACKEND_URL = "http://localhost:3001";
+
+const Login = ({ setSession }) => {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     fullName: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     setLoading(true);
 
     try {
-      if (isLogin) {
-        // --- SIGN IN LOGIC ---
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
+      const endpoint = isLogin
+        ? `${BACKEND_URL}/api/auth/login`
+        : `${BACKEND_URL}/api/auth/signup`;
 
-        if (error) throw error;
-        alert("Login Successful!");
-        navigate("/"); // Redirect to Dashboard
-      } else {
-        // --- SIGN UP LOGIC ---
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: { display_name: formData.fullName }, // Saves name to user metadata
-          },
-        });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-        if (error) throw error;
-        alert("Account created! You can now log in.");
-        setIsLogin(true); // Switch to login mode
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Invalid server response");
       }
-    } catch (error) {
-      alert(error.message);
+
+      if (!res.ok) throw new Error(data.error || "Authentication failed");
+
+      // Save session and user
+      localStorage.setItem("sessionToken", data.sessionToken || "");
+      localStorage.setItem("userData", JSON.stringify(data.user));
+
+      setSession({ token: data.sessionToken, user: data.user });
+      navigate("/");
+    } catch (err) {
+      setErrorMessage(err.message);
     } finally {
       setLoading(false);
     }
@@ -67,11 +70,15 @@ const Login = () => {
         <h2 className="text-2xl font-bold text-white mb-2 text-center">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
-        <p className="text-gray-400 text-center mb-8 text-sm">
+        <p className="text-gray-400 text-center mb-4 text-sm">
           {isLogin
             ? "Enter your credentials to access your portfolio."
             : "Start tracking your wealth today."}
         </p>
+
+        {errorMessage && (
+          <p className="text-red-500 text-sm mb-4 text-center">{errorMessage}</p>
+        )}
 
         <form onSubmit={handleAuth} className="space-y-4">
           {!isLogin && (
@@ -83,8 +90,10 @@ const Login = () => {
                 name="fullName"
                 type="text"
                 onChange={handleChange}
+                value={formData.fullName}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-green-500 focus:outline-none transition-colors"
                 placeholder="John Doe"
+                required
               />
             </div>
           )}
@@ -97,8 +106,10 @@ const Login = () => {
               name="email"
               type="email"
               onChange={handleChange}
+              value={formData.email}
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-green-500 focus:outline-none transition-colors"
               placeholder="name@example.com"
+              required
             />
           </div>
 
@@ -110,8 +121,10 @@ const Login = () => {
               name="password"
               type="password"
               onChange={handleChange}
+              value={formData.password}
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-green-500 focus:outline-none transition-colors"
               placeholder="••••••••"
+              required
             />
           </div>
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { supabase } from "./supabaseClient";
 
 import MainLayout from "./layout/MainLayout";
 import "./App.css";
@@ -18,20 +17,10 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check active session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // 2. Listen for changes (login, logout)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    const token = localStorage.getItem("sessionToken");
+    const user = JSON.parse(localStorage.getItem("userData") || "null");
+    if (token && user) setSession({ token, user });
+    setLoading(false);
   }, []);
 
   if (loading)
@@ -46,10 +35,9 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!session ? <Login /> : <Navigate to="/" />}
+          element={!session ? <Login setSession={setSession} /> : <Navigate to="/" />}
         />
 
-        {/* Protect these routes! */}
         <Route
           path="/"
           element={session ? <MainLayout /> : <Navigate to="/login" />}
