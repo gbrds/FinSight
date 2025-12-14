@@ -1,3 +1,4 @@
+import { supabase } from "../supabaseClient";
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -54,10 +55,15 @@ const MainLayout = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    // In the future: Supabase logout function here
-    console.log("Logging out...");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setIsProfileOpen(false);
+      navigate("/login");
+    } catch (error) {
+      console.error("Error logging out:", error.message);
+    }
   };
 
   return (
