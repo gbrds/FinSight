@@ -1,58 +1,46 @@
-import { loginUser } from "./supabaseClient.js";
+import { supabase } from "./supabaseClient.js";
 import { v4 as uuidv4 } from "uuid";
 
-/** 
- 
-Create a new portfolio for a user
-@param {string} email - User email for login
-@param {string} password - User password
-@param {string} name - Portfolio name
-@returns {object} created portfolio*/
-export async function createPortfolio(email, password, name) {
+/**
+ * Create a new portfolio for a user
+ * @param {Object} param0
+ * @param {string} param0.user_id - auth.uid()
+ * @param {string} param0.name - portfolio name
+ * @returns inserted portfolio
+ */
+export async function createPortfolio({ user_id, name }) {
   try {
-    const { userClient, userId } = await loginUser(email, password);
-
-    const { data, error } = await userClient
+    const id = uuidv4();
+    const { data, error } = await supabase
       .from("portfolios")
-      .insert([
-        {
-          id: uuidv4(),
-          user_id: userId,
-          name,
-        },
-      ])
+      .insert([{ id, user_id, name }])
       .select()
       .single();
 
     if (error) throw error;
-
     return data;
   } catch (err) {
-    console.error("[createPortfolio] DB error:", err);
+    console.error("[portfolioService] createPortfolio error:", err);
     throw err;
   }
 }
 
-/** 
- 
-Fetch portfolios for a user
-@param {string} email - User email for login
-@param {string} password - User password
-@returns {array} portfolios*/
-export async function getUserPortfolios(email, password) {
+/**
+ * Get portfolios of a user
+ * @param {string} user_id
+ * @returns array of portfolios
+ */
+export async function getUserPortfolios(user_id) {
   try {
-    const { userClient } = await loginUser(email, password);
-
-    const { data, error } = await userClient
+    const { data, error } = await supabase
       .from("portfolios")
       .select("*")
-      .order("created_at", { ascending: false });
+      .eq("user_id", user_id);
 
     if (error) throw error;
-
-    return data;
+    return data || [];
   } catch (err) {
-    console.error("[getUserPortfolios] DB error:", err);
+    console.error("[portfolioService] getUserPortfolios error:", err);
     throw err;
   }
 }
