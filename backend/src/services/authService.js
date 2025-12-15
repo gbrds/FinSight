@@ -55,7 +55,7 @@ export async function loginUser({ email, password }) {
     .from("users")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (profileError) throw profileError;
 
   return {

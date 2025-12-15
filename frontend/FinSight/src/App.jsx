@@ -12,14 +12,26 @@ import Finance from "./pages/Finance";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 
+// ⚡ Safe JSON parse helper
+function safeJSONParse(str) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("sessionToken");
-    const user = JSON.parse(localStorage.getItem("userData") || "null");
-    if (token && user) setSession({ token, user });
+    const user = safeJSONParse(localStorage.getItem("userData"));
+
+    if (token && user) {
+      setSession({ token, user });
+    }
     setLoading(false);
   }, []);
 
