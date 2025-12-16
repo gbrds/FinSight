@@ -2,10 +2,10 @@ import { createBankAccount, addTransactions } from "./financeService.js";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import { supabase } from "./supabaseClient.js";
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
-dotenv.config({ path: path.resolve(dirname, ".env") });
+dotenv.config({ path: path.resolve(dirname, "../../.env") });
 
 (async () => {
   const email = process.env.USER_EMAIL;
@@ -19,11 +19,25 @@ dotenv.config({ path: path.resolve(dirname, ".env") });
   console.log(` STARTING FULL INTEGRATION TEST`);
 
   try {
-    console.log(" Step 1: Getting Bank Account");
+    // --- STEP 0: LOGIN TO GET USER ID (UUID) ---
+    console.log("🛠️ Step 0: Logging in to get User ID...");
 
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+    if (authError) {
+      throw new Error(`Login failed: ${authError.message}`);
+    }
+
+    const userId = authData.user.id; // This is the UUID (e.g., "carl-rob...")
+    console.log(`   -> Logged in! User ID is: ${userId}`);
+
+    console.log("🏦 Step 1: Creating Bank Account");
     const { data: bankAccount } = await createBankAccount(
-      email,
-      password,
+      userId,
       "Chase Checking",
       8500.0
     );
@@ -71,12 +85,7 @@ dotenv.config({ path: path.resolve(dirname, ".env") });
       },
     ];
 
-    const result = await addTransactions(
-      email,
-      password,
-      bankAccount.id,
-      transactions
-    );
+    const result = await addTransactions(userId, bankAccount.id, transactions);
 
     console.log(` Success: Added ${result.length} transactions!`);
   } catch (err) {
