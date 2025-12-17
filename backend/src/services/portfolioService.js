@@ -1,5 +1,5 @@
-import { supabase } from './supabaseClient.js';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from "./supabaseClient.js";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Create a new portfolio for a user
@@ -12,7 +12,7 @@ export async function createPortfolio({ user_id, name }) {
   try {
     const id = uuidv4();
     const { data, error } = await supabase
-      .from('portfolios')
+      .from("portfolios")
       .insert([{ id, user_id, name }])
       .select()
       .single();
@@ -20,7 +20,7 @@ export async function createPortfolio({ user_id, name }) {
     if (error) throw error;
     return data;
   } catch (err) {
-    console.error('[portfolioService] createPortfolio error:', err);
+    console.error("[portfolioService] createPortfolio error:", err);
     throw err;
   }
 }
@@ -33,14 +33,14 @@ export async function createPortfolio({ user_id, name }) {
 export async function getUserPortfolios(user_id) {
   try {
     const { data, error } = await supabase
-      .from('portfolios')
-      .select('*')
-      .eq('user_id', user_id);
+      .from("portfolios")
+      .select("*")
+      .eq("user_id", user_id);
 
     if (error) throw error;
     return data || [];
   } catch (err) {
-    console.error('[portfolioService] getUserPortfolios error:', err);
+    console.error("[portfolioService] getUserPortfolios error:", err);
     throw err;
   }
 }
