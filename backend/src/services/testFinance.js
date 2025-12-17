@@ -19,7 +19,7 @@ dotenv.config({ path: path.resolve(dirname, "../../.env") });
   console.log(` STARTING FULL INTEGRATION TEST`);
 
   try {
-    // --- STEP 0: LOGIN TO GET USER ID (UUID) ---
+    // LOGIN TO GET USER ID
     console.log("🛠️ Step 0: Logging in to get User ID...");
 
     const { data: authData, error: authError } =
@@ -32,7 +32,7 @@ dotenv.config({ path: path.resolve(dirname, "../../.env") });
       throw new Error(`Login failed: ${authError.message}`);
     }
 
-    const userId = authData.user.id; // This is the UUID (e.g., "carl-rob...")
+    const userId = authData.user.id;
     console.log(`   -> Logged in! User ID is: ${userId}`);
 
     console.log("🏦 Step 1: Creating Bank Account");
@@ -46,7 +46,7 @@ dotenv.config({ path: path.resolve(dirname, "../../.env") });
       `   -> Using Account: ${bankAccount.name} (ID: ${bankAccount.id})`
     );
 
-    // TEHINGUTE LISAMINE
+    // ADDING TRANSACTIONS
     console.log(" Step 4: Injecting History");
 
     const transactions = [
