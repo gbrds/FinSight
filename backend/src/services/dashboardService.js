@@ -1,66 +1,100 @@
+// services/dashboardService.js
 import { recalcPortfolioMetrics } from './portfolioMetricsAtomicService.js';
 import * as portfolioService from './portfolioService.js';
 import * as reportingService from './reportingService.js';
 
 /**
- * Fetch dashboard data for a user
+ * Fetch and aggregate dashboard data for a user
  */
 export async function getUserDashboard(userId) {
   try {
     if (!userId) {
-      // No userId provided, return empty dashboard
       return {
         totalValue: 0,
         totalCash: 0,
         topHoldings: [],
+        dayChange: 0,
+        dayChangePercent: 0,
         message: "No user ID provided. Please log in.",
       };
     }
 
     const portfolios = await portfolioService.getUserPortfolios(userId);
-
     if (!portfolios || portfolios.length === 0) {
-      // New user with no portfolios
       return {
         totalValue: 0,
         totalCash: 0,
         topHoldings: [],
+        dayChange: 0,
+        dayChangePercent: 0,
         message: "You have no portfolios yet. Add your first portfolio to get started.",
       };
     }
 
     let totalValue = 0;
     let totalCash = 0;
-    const topHoldings = [];
+    const positionsMap = new Map(); // merge positions by symbol
 
     for (const portfolio of portfolios) {
-      // recalc metrics safely
+      // Recalculate portfolio metrics safely
+      let metrics = { totalValue: 0, cash: 0 };
       try {
-        const metrics = await recalcPortfolioMetrics(portfolio.id);
-        totalValue += metrics?.totalValue ?? 0;
-        totalCash += metrics?.cash ?? 0;
+        metrics = await recalcPortfolioMetrics(portfolio.id);
       } catch (err) {
-        console.warn(`[dashboardService] Failed to recalc metrics for portfolio ${portfolio.id}`, err);
+        console.warn(`[dashboardService] Failed recalc metrics for portfolio ${portfolio.id}:`, err.message);
       }
 
-      // fetch report safely
+      totalValue += metrics.totalValue ?? 0;
+      totalCash += metrics.cash ?? 0;
+
+      // Fetch portfolio positions safely
+      let report = { positions: [] };
       try {
-        const report = await reportingService.getPortfolioReport(portfolio.id);
-        if (Array.isArray(report?.positions)) {
-          topHoldings.push(...report.positions);
-        }
+        report = await reportingService.getPortfolioReport(portfolio.id);
       } catch (err) {
-        console.warn(`[dashboardService] Failed to fetch report for portfolio ${portfolio.id}`, err);
+        console.warn(`[dashboardService] Failed fetch report for portfolio ${portfolio.id}:`, err.message);
+      }
+
+      // Merge positions by symbol
+      if (Array.isArray(report.positions)) {
+        for (const pos of report.positions) {
+          const key = pos.symbol;
+          if (!positionsMap.has(key)) {
+            positionsMap.set(key, { ...pos, portfolioIds: [portfolio.id] });
+          } else {
+            // merge values if same symbol exists
+            const existing = positionsMap.get(key);
+            existing.marketValue += pos.marketValue ?? 0;
+            existing.unrealizedPnl += pos.unrealizedPnl ?? 0;
+            existing.quantity += pos.quantity ?? 0;
+            existing.portfolioIds.push(portfolio.id);
+            // keep latest currentPrice
+            existing.currentPrice = pos.currentPrice ?? existing.currentPrice;
+          }
+        }
       }
     }
+
+    // Convert map to array, sort by marketValue, take top 10
+    const allPositions = Array.from(positionsMap.values());
+    allPositions.sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0));
+    const topHoldings = allPositions.slice(0, 10).map(pos => ({
+      ...pos,
+      // Generate a unique key for React
+      uniqueKey: `${pos.symbol}-${pos.portfolioIds.join('-')}`,
+    }));
+
+    // Calculate day change across all positions
+    const dayChange = allPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl ?? 0), 0);
+    const dayChangePercent = totalValue ? (dayChange / (totalValue - dayChange)) * 100 : 0;
 
     return {
       totalValue,
       totalCash,
       topHoldings,
-      message: topHoldings.length === 0
-        ? "You have no holdings yet. Add your first asset to get started."
-        : null,
+      dayChange,
+      dayChangePercent,
+      message: topHoldings.length === 0 ? "You have no holdings yet. Add your first asset to get started." : null,
     };
   } catch (err) {
     console.error('[dashboardService] getUserDashboard error:', err);
@@ -68,6 +102,8 @@ export async function getUserDashboard(userId) {
       totalValue: 0,
       totalCash: 0,
       topHoldings: [],
+      dayChange: 0,
+      dayChangePercent: 0,
       message: "Failed to fetch dashboard. Please try again later.",
     };
   }
