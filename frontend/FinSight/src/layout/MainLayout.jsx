@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import Logo from "../assets/Logo.png";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -42,8 +43,27 @@ const MainLayout = ({ setSession }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
+  const [userName, setUserName] = useState("User");
+  const [userEmail, setUserEmail] = useState("");
 
-  // Close dropdown if clicking outside
+  // Get user data from local storage
+  useEffect(() => {
+    const storedUser = localStorage.getItem("userData");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+
+        const name = user.display_name || "User";
+
+        setUserName(name);
+        setUserEmail(user.email || "");
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  }, []);
+
+  //  Click Outside to close dropdown function
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -51,9 +71,10 @@ const MainLayout = ({ setSession }) => {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
-
   const handleLogout = async () => {
     try {
       // Clear localStorage
@@ -95,17 +116,19 @@ const MainLayout = ({ setSession }) => {
         )}
       >
         <div className="flex items-center justify-between mb-8 px-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center font-bold text-black">
-              F
-            </div>
-            <span
-            onClick={() => navigate("/")}
-            className="text-xl font-bold tracking-tight cursor-pointer hover:text-green-400 transition-colors"
+          <Link
+            to="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            FinSight
-          </span>
-          </div>
+            <img
+              src={Logo}
+              alt="FinSight Logo"
+              className="h-10 w-auto object-contain"
+            />
+            <span className="text-xl font-bold tracking-tight text-white">
+              FinSight
+            </span>
+          </Link>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
             className="md:hidden text-gray-400 hover:text-white"
@@ -187,15 +210,14 @@ const MainLayout = ({ setSession }) => {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs hover:bg-green-500 hover:text-black transition-colors"
               >
-                US
+                {userName[0]?.toUpperCase()}
               </button>
 
               {/* The Menu Itself */}
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl py-1 z-50">
                   <div className="px-4 py-2 border-b border-gray-800">
-                    <p className="text-sm font-bold text-white">John Doe</p>
-                    <p className="text-xs text-gray-500 truncate">user@example.com</p>
+                    {userName}
                   </div>
 
                   <Link

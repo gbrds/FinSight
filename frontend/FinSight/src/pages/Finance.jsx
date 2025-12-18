@@ -38,40 +38,51 @@ const Finance = () => {
   });
 
   // Fetch User Finance Data on Load
-  useEffect(() => {
-    const fetchFinanceData = async () => {
-      try {
-        setLoading(true);
-        const storedUser = localStorage.getItem("userData");
-        if (!storedUser) {
-          setError("No user found. Please log in.");
-          setLoading(false);
-          return;
-        }
+  const fetchFinanceData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("userData");
 
-        const user = JSON.parse(storedUser);
-        const uId = user.id || user._id;
-        setUserId(uId);
-
-        const response = await fetch(
-          `${BACKEND_URL}/api/finance/userdata/${uId}`
-        );
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
-        const userData = await response.json();
-
-        setTransactions(userData.transactions || []);
-        setAccounts(userData.accounts || []);
-        setCategories(userData.categories || []);
-      } catch (err) {
-        console.error("Error loading finance data:", err);
-        setError("Could not load financial history.");
-      } finally {
+      if (!storedUser) {
+        setError("No user found. Please log in.");
         setLoading(false);
+        return;
       }
-    };
 
+      const user = JSON.parse(storedUser);
+      const uId = user.id || user._id;
+      setUserId(uId);
+
+      const response = await fetch(`${BACKEND_URL}/api/finance/userdata`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401)
+        throw new Error("Unauthorized. Please log in again.");
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+      const userData = await response.json();
+
+      setTransactions(userData.transactions || []);
+      setAccounts(userData.accounts || []);
+      setCategories(userData.categories || []);
+    } catch (err) {
+      console.error("Error loading finance data:", err);
+      setError("Could not load financial history.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchFinanceData();
   }, []);
+
   // Open Modal for New Transaction
   const openAddModal = () => {
     setEditingTx(null);
@@ -116,6 +127,9 @@ const Finance = () => {
       return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) return alert("Session expired. Please login again.");
+
     // 2. Calculate correct +/- amount
     const finalAmount =
       formData.type === "expense"
@@ -123,13 +137,18 @@ const Finance = () => {
         : Math.abs(Number(formData.amount));
 
     try {
+      let response;
+
       if (editingTx) {
-        // UPDATE (EDIT) LOGIC
-        const response = await fetch(
+        // --- UPDATE (EDIT) LOGIC ---
+        response = await fetch(
           `${BACKEND_URL}/api/finance/transactions/${editingTx.id}`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
               userId: userId,
               merchant: formData.merchant,
@@ -140,14 +159,10 @@ const Finance = () => {
             }),
           }
         );
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to update");
-        }
       } else {
-        //  CREATE (ADD) LOGIC
-        if (!accounts.length) return alert("No account found");
+        // --- CREATE (ADD) LOGIC ---
+        if (!accounts.length)
+          return alert("No account found. Please contact support.");
 
         const newTx = {
           userId: userId,
@@ -164,22 +179,32 @@ const Finance = () => {
           ],
         };
 
-        const response = await fetch(
-          `${BACKEND_URL}/api/finance/transactions`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(newTx),
-          }
-        );
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to create");
-        }
+        response = await fetch(`${BACKEND_URL}/api/finance/transactions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(newTx),
+        });
       }
 
-      window.location.reload();
+      // --- PARSE RESPONSE & CHECK FOR NEW TOKEN ---
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Operation failed");
+      }
+
+      // *** CRITICAL FIX: Update token if backend sent a new one ***
+      if (data.token) {
+        console.log("Token rotated successfully");
+        localStorage.setItem("token", data.token);
+      }
+
+      // Update UI and Close Modal
+      await fetchFinanceData();
+      setShowModal(false);
     } catch (err) {
       console.error("Submission Error:", err);
       alert(`Error: ${err.message}`);
@@ -192,10 +217,15 @@ const Finance = () => {
       return;
 
     try {
+      const token = localStorage.getItem("token");
+
       const response = await fetch(
         `${BACKEND_URL}/api/finance/transactions/${id}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -418,7 +448,7 @@ const Finance = () => {
         </div>
       </div>
 
-      {/*  SHARED POPUP ADD / EDIT*/}
+      {/* SHARED POPUP ADD / EDIT*/}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
