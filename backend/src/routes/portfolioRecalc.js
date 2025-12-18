@@ -1,12 +1,11 @@
 // routes/portfolioRecalc.js
 import express from 'express';
-import { authMiddleware } from '../middleware/authMiddleware.js';
 import { recalcPortfolioMetrics } from '../services/portfolioMetricsAtomicService.js';
 
 const router = express.Router();
 
 // POST /api/portfolio/recalc
-router.post('/recalc', authMiddleware, async (req, res) => {
+router.post('/recalc', async (req, res) => {
   try {
     const { portfolio_id } = req.body;
     if (!portfolio_id) return res.status(400).json({ error: 'Missing portfolio_id' });
