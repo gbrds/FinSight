@@ -1,63 +1,99 @@
-import React from "react";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  Activity,
-} from "lucide-react";
-import {
-  mockPortfolioSummary,
-  mockHoldings,
-  mockMarketNews,
-} from "../data/mockData";
+import React, { useEffect, useState } from "react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, Activity } from "lucide-react";
 
 const Dashboard = () => {
-  const isPositive = mockPortfolioSummary.dayChange >= 0;
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    totalValue: 0,
+    totalCash: 0,
+    topHoldings: [],
+    dayChange: 0,
+    dayChangePercent: 0,
+  });
+  const [error, setError] = useState(null);
+
+  const fetchDashboard = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+
+      if (!token || !userData?.id) throw new Error("No login token found. Please log in.");
+
+      const dashRes = await fetch(`http://localhost:3001/api/dashboard/${userData.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (dashRes.status === 401) throw new Error("You are not logged in. Please log in again.");
+      if (!dashRes.ok) throw new Error(`Failed to fetch dashboard data (HTTP ${dashRes.status})`);
+
+      const data = await dashRes.json();
+
+      setDashboardData({
+        totalValue: data.totalValue ?? 0,
+        totalCash: data.totalCash ?? 0,
+        topHoldings: Array.isArray(data.topHoldings) ? data.topHoldings : [],
+        dayChange: data.dayChange ?? 0,
+        dayChangePercent: data.dayChangePercent ?? 0,
+      });
+    } catch (err) {
+      console.error("Dashboard error:", err);
+      setError(err.message || "Failed to load dashboard. Please try again.");
+      setDashboardData({
+        totalValue: 0,
+        totalCash: 0,
+        topHoldings: [],
+        dayChange: 0,
+        dayChangePercent: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+    const interval = setInterval(fetchDashboard, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) return <div className="text-white p-6">Loading dashboard...</div>;
+  if (error) return <div className="text-red-400 p-6">{error}</div>;
+
+  const isPositive = dashboardData.dayChange >= 0;
 
   return (
     <div className="space-y-6">
-      {/* 1. Top Summary Cards */}
+      {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Total Value Card */}
         <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-gray-400 text-sm font-medium">
-                Total Portfolio Value
-              </p>
+              <p className="text-gray-400 text-sm font-medium">Total Portfolio Value</p>
               <h2 className="text-3xl font-bold text-white mt-1">
-                ${mockPortfolioSummary.totalValue.toLocaleString()}
+                ${dashboardData.totalValue.toLocaleString()}
               </h2>
             </div>
             <div className="p-3 bg-green-500/10 rounded-lg">
               <DollarSign className="text-green-500" size={24} />
             </div>
           </div>
-          <div
-            className={`flex items-center gap-2 text-sm ${
-              isPositive ? "text-green-400" : "text-red-400"
-            }`}
-          >
-            {isPositive ? (
-              <ArrowUpRight size={16} />
-            ) : (
-              <ArrowDownRight size={16} />
-            )}
-            <span className="font-semibold">
-              ${mockPortfolioSummary.dayChange.toLocaleString()}
-            </span>
-            <span>({mockPortfolioSummary.dayChangePercent}%)</span>
+          <div className={`flex items-center gap-2 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
+            {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+            <span className="font-semibold">${dashboardData.dayChange.toLocaleString()}</span>
+            <span>({dashboardData.dayChangePercent}%)</span>
             <span className="text-gray-500 ml-1">Today</span>
           </div>
         </div>
 
-        {/* Buying Power Card */}
         <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl">
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-gray-400 text-sm font-medium">Buying Power</p>
               <h2 className="text-3xl font-bold text-white mt-1">
-                ${mockPortfolioSummary.buyingPower.toLocaleString()}
+                ${dashboardData.totalCash.toLocaleString()}
               </h2>
             </div>
             <div className="p-3 bg-blue-500/10 rounded-lg">
@@ -67,7 +103,6 @@ const Dashboard = () => {
           <p className="text-gray-500 text-sm">Available cash to trade</p>
         </div>
 
-        {/* Quick Action Placeholder */}
         <div className="bg-green-500/10 border border-green-500/20 p-6 rounded-2xl flex flex-col justify-center items-center cursor-pointer hover:bg-green-500/20 transition-colors group">
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <span className="text-black text-2xl font-bold">+</span>
@@ -76,98 +111,47 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 2. Main Chart / Holdings Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Chart Placeholder */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 h-80 flex flex-col justify-center items-center text-gray-500">
-            <p>Portfolio Performance Chart</p>
-            <p className="text-xs text-gray-600">
-              (We will install Recharts here next)
-            </p>
-          </div>
-
-          {/* Holdings List  */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-gray-800 flex justify-between items-center">
-              <h3 className="font-bold text-lg">Top Holdings</h3>
-              <button className="text-sm text-green-400 hover:text-green-300">
-                View All
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase">
-                  <tr>
-                    <th className="p-4">Symbol</th>
-                    <th className="p-4">Price</th>
-                    <th className="p-4">Change</th>
-                    <th className="p-4 text-right">Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {mockHoldings.map((stock) => (
-                    <tr
-                      key={stock.symbol}
-                      className="hover:bg-gray-800/50 transition-colors"
-                    >
-                      <td className="p-4">
-                        <div className="font-bold text-white">
-                          {stock.symbol}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {stock.name}
-                        </div>
-                      </td>
-                      <td className="p-4 text-gray-300">
-                        ${stock.price.toFixed(2)}
-                      </td>
-                      <td
-                        className={`p-4 font-medium ${
-                          stock.change >= 0 ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {stock.change > 0 ? "+" : ""}
-                        {stock.changePercent}%
-                      </td>
-                      <td className="p-4 text-right font-medium text-white">
-                        ${stock.value.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {/* Holdings Table */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+          <h3 className="font-bold text-lg">Top Holdings</h3>
         </div>
-
-        {/* 3. News Feed  */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 h-fit">
-          <h3 className="font-bold text-lg mb-4">Market News</h3>
-          <div className="space-y-4">
-            {mockMarketNews.map((news) => (
-              <div key={news.id} className="group cursor-pointer">
-                <div className="flex gap-2 text-xs text-green-400 mb-1">
-                  <span>{news.source}</span>
-                  <span className="text-gray-600">•</span>
-                  <span className="text-gray-500">{news.time}</span>
-                </div>
-                <h4 className="font-medium text-gray-200 group-hover:text-green-400 transition-colors leading-snug">
-                  {news.headline}
-                </h4>
-                <div className="mt-2 flex gap-2">
-                  {news.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-400"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase">
+              <tr>
+                <th className="p-4">Symbol</th>
+                <th className="p-4">Price</th>
+                <th className="p-4">Change</th>
+                <th className="p-4 text-right">Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {dashboardData.topHoldings.length > 0 ? (
+                dashboardData.topHoldings.map((stock) => (
+                  <tr key={stock.symbol} className="hover:bg-gray-800/50 transition-colors">
+                    <td className="p-4">
+                      <div className="font-bold text-white">{stock.symbol ?? "—"}</div>
+                      <div className="text-xs text-gray-500">{stock.name ?? "—"}</div>
+                    </td>
+                    <td className="p-4 text-gray-300">${stock.currentPrice?.toFixed(2) ?? "—"}</td>
+                    <td className={`p-4 font-medium ${stock.unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {stock.unrealizedPnl >= 0 ? "+" : ""}{stock.unrealizedPnl?.toFixed(2) ?? "—"}
+                    </td>
+                    <td className="p-4 text-right font-medium text-white">
+                      ${stock.marketValue?.toLocaleString() ?? "0"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="text-center text-gray-500 p-4">
+                    No holdings yet. Add your first asset to get started!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

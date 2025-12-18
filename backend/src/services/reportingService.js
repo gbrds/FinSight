@@ -1,111 +1,139 @@
-// backend/src/services/reportingService.js
 import { supabase } from './supabaseClient.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Get detailed portfolio report
- * Includes positions, unrealized PnL, and totals
+ * Fetch portfolio positions + metrics and aggregate totals
  */
 export async function getPortfolioReport(portfolio_id) {
-  const { data, error } = await supabase
-    .from('portfolio_positions')
-    .select(`
-      id,
-      symbol,
-      quantity,
-      avg_buy_price,
-      status,
-      realized_pnl,
-      portfolio_position_metrics (
-        current_price,
-        market_value,
-        unrealized_pnl,
-        unrealized_pnl_pct,
-        updated_at
-      )
-    `)
-    .eq('portfolio_id', portfolio_id);
-
-  if (error) throw error;
-
+  let positions = [];
   let totalValue = 0;
   let totalUnrealized = 0;
   let totalRealized = 0;
+  let totalPositionsValue = 0;
+  let cashBalance = 0; // if you track cash separately
 
-  const positions = data.map(p => {
-    const m = p.portfolio_position_metrics?.[0];
-    if (m) {
-      totalValue += m.market_value;
-      totalUnrealized += m.unrealized_pnl;
-    }
-    totalRealized += p.realized_pnl ?? 0;
+  try {
+    const { data: rows, error } = await supabase
+      .from('portfolio_positions')
+      .select(`
+        id,
+        symbol,
+        quantity,
+        avg_buy_price,
+        status,
+        realized_pnl,
+        portfolio_position_metrics (
+          current_price,
+          market_value,
+          unrealized_pnl,
+          unrealized_pnl_pct,
+          updated_at
+        )
+      `)
+      .eq('portfolio_id', portfolio_id);
 
-    return {
-      symbol: p.symbol,
-      quantity: p.quantity,
-      avgBuyPrice: p.avg_buy_price,
-      status: p.status,
-      currentPrice: m?.current_price ?? null,
-      marketValue: m?.market_value ?? null,
-      unrealizedPnl: m?.unrealized_pnl ?? null,
-      unrealizedPnlPct: m?.unrealized_pnl_pct ?? null,
-      realizedPnl: p.realized_pnl ?? 0,
-      lastUpdated: m?.updated_at ?? null
-    };
-  });
+    if (error) throw error;
+
+    positions = (rows || []).map(p => {
+      // Pick the latest metric by updated_at
+      const metrics = Array.isArray(p.portfolio_position_metrics) ? p.portfolio_position_metrics : [];
+      const latestMetric = metrics.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0] || {};
+
+      const marketValue = latestMetric.market_value ?? 0;
+      const unrealizedPnl = latestMetric.unrealized_pnl ?? 0;
+
+      totalValue += marketValue;
+      totalUnrealized += unrealizedPnl;
+      totalRealized += p.realized_pnl ?? 0;
+      totalPositionsValue += marketValue;
+
+      return {
+        symbol: p.symbol ?? "—",
+        quantity: p.quantity ?? 0,
+        avgBuyPrice: p.avg_buy_price ?? 0,
+        status: p.status ?? "unknown",
+        currentPrice: latestMetric.current_price ?? 0,
+        marketValue,
+        unrealizedPnl,
+        unrealizedPnlPct: latestMetric.unrealized_pnl_pct ?? 0,
+        realizedPnl: p.realized_pnl ?? 0,
+        lastUpdated: latestMetric.updated_at ?? null
+      };
+    });
+  } catch (err) {
+    console.error(`[reportingService] Failed fetch positions for ${portfolio_id}:`, err.message);
+  }
 
   return {
     portfolioId: portfolio_id,
     totalValue,
     totalUnrealizedPnl: totalUnrealized,
     totalRealizedPnl: totalRealized,
-    positions
+    positions,
+    totalPositionsValue,
+    cashBalance
   };
 }
 
 /**
- * Snapshot current portfolio equity for historical tracking
- * Inserts a row into portfolio_equity_curve
+ * Insert equity snapshot, avoiding duplicates
  */
 export async function snapshotPortfolioEquity(portfolio_id) {
-  // 1️⃣ Get current portfolio report
-  const report = await getPortfolioReport(portfolio_id);
+  try {
+    const report = await getPortfolioReport(portfolio_id);
 
-  // 2️⃣ Prepare snapshot
-  const snapshotId = uuidv4();
-  const now = new Date().toISOString();
-  const { totalValue, totalUnrealizedPnl, totalRealizedPnl } = report;
+    // Check last snapshot to avoid duplicates
+    const { data: lastSnapshot } = await supabase
+      .from('portfolio_equity_curve')
+      .select('timestamp')
+      .eq('portfolio_id', portfolio_id)
+      .order('timestamp', { ascending: false })
+      .limit(1);
 
-  // 3️⃣ Insert into equity curve table
-  const { data, error } = await supabase
-    .from('portfolio_equity_curve')
-    .insert([{
-      id: snapshotId,
-      portfolio_id,
-      timestamp: now,
-      total_value: totalValue,
-      unrealized_pnl: totalUnrealizedPnl,
-      realized_pnl: totalRealizedPnl
-    }])
-    .select()
-    .single();
+    const now = new Date().toISOString();
+    if (lastSnapshot?.[0]?.timestamp === now) {
+      return { snapshotId: lastSnapshot[0].id, timestamp: now };
+    }
 
-  if (error) throw error;
+    const snapshotId = uuidv4();
+    const { error } = await supabase
+      .from('portfolio_equity_curve')
+      .insert([{
+        id: snapshotId,
+        portfolio_id,
+        timestamp: now,
+        total_value: report.totalValue,
+        cash_balance: report.cashBalance,
+        positions_value: report.totalPositionsValue,
+        unrealized_pnl: report.totalUnrealizedPnl,
+        realized_pnl: report.totalRealizedPnl
+      }]);
 
-  return data;
+    if (error) throw error;
+
+    return { snapshotId, timestamp: now };
+  } catch (err) {
+    console.error(`[reportingService] Failed snapshot for ${portfolio_id}:`, err.message);
+    return { snapshotId: null, timestamp: null };
+  }
 }
 
 /**
- * Fetch historical equity curve for a portfolio
+ * Fetch equity curve for a portfolio
  */
 export async function getEquityCurve(portfolio_id, limit = 100) {
-  const { data, error } = await supabase
-    .from('portfolio_equity_curve')
-    .select('*')
-    .eq('portfolio_id', portfolio_id)
-    .order('timestamp', { ascending: true })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_equity_curve')
+      .select('*')
+      .eq('portfolio_id', portfolio_id)
+      .order('timestamp', { ascending: true })
+      .limit(limit);
 
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error(`[reportingService] Failed fetch equity curve for ${portfolio_id}:`, err.message);
+    return [];
+  }
 }
