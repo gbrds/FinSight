@@ -9,12 +9,11 @@ import {
 import { supabase } from "../services/supabaseClient.js";
 
 const router = express.Router();
-
 // POST /api/finance/account
 router.post("/account", async (req, res) => {
   try {
-    const { userId, accountName, initialBalance } = req.body;
-    if (!userId) throw new Error("User ID is required");
+    const userId = req.user.id;
+    const { accountName, initialBalance } = req.body;
 
     const result = await createBankAccount(userId, accountName, initialBalance);
     res.status(200).json({
@@ -30,9 +29,10 @@ router.post("/account", async (req, res) => {
 // POST /api/finance/transactions
 router.post("/transactions", async (req, res) => {
   try {
-    const { userId, accountId, transactions } = req.body;
-    if (!userId || !accountId)
-      throw new Error("User ID and Account ID are required");
+    const userId = req.user.id;
+    const { accountId, transactions } = req.body;
+
+    if (!accountId) throw new Error("Account ID is required");
 
     const data = await addTransactions(userId, accountId, transactions);
     res.status(201).json({
@@ -48,14 +48,11 @@ router.post("/transactions", async (req, res) => {
 // PUT /api/finance/transactions/:id
 router.put("/transactions/:id", async (req, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
     const updates = req.body;
-    const userId = updates.userId;
-    if (!userId)
-      return res.status(400).json({ error: "User ID required for updates" });
 
-    // Clean up body before sending to service
-    delete updates.userId;
+    delete updates.userId; // Security cleanup
 
     const updatedTx = await updateTransaction(userId, id, updates);
 
@@ -78,11 +75,10 @@ router.delete("/transactions/:id", async (req, res) => {
   }
 });
 
-// GET /api/finance/transactions?user_id=123
+// GET /api/finance/transactions
 router.get("/transactions", async (req, res) => {
   try {
-    const { user_id } = req.query;
-    if (!user_id) return res.status(400).json({ error: "Missing user_id" });
+    const user_id = req.user.id;
 
     const { data: accounts } = await supabase
       .from("finance_accounts")
@@ -106,10 +102,10 @@ router.get("/transactions", async (req, res) => {
   }
 });
 
-// GET /api/finance/userdata/:userId
-router.get("/userdata/:userId", async (req, res) => {
+// GET /api/finance/userdata
+router.get("/userdata", async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
     const data = await logUserFinanceData(userId);
     if (!data) throw new Error("Failed to retrieve user data");
     res.json(data);

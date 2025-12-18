@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import Logo from "../assets/Logo.png";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -115,12 +116,19 @@ const MainLayout = ({ setSession }) => {
         )}
       >
         <div className="flex items-center justify-between mb-8 px-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center font-bold text-black">
-              F
-            </div>
-            <span className="text-xl font-bold tracking-tight">FinSight</span>
-          </div>
+          <Link
+            to="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <img
+              src={Logo}
+              alt="FinSight Logo"
+              className="h-10 w-auto object-contain"
+            />
+            <span className="text-xl font-bold tracking-tight text-white">
+              FinSight
+            </span>
+          </Link>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
             className="md:hidden text-gray-400 hover:text-white"
