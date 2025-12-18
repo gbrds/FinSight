@@ -1,8 +1,7 @@
+// routes/dashboardRoute.js
 import express from "express";
 import { supabase } from "../services/supabaseClient.js";
-import { getUserPortfolios } from "../services/portfolioService.js";
-import { recalcPortfolioMetrics } from "../services/portfolioMetricsAtomicService.js";
-import { getPortfolioReport } from "../services/reportingService.js";
+import { getUserDashboard } from "../services/dashboardService.js";
 
 const router = express.Router();
 
@@ -13,6 +12,7 @@ router.get("/:userId", async (req, res) => {
   if (!token) return res.status(401).json({ error: "Missing auth token" });
 
   try {
+    // Verify token
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user || data.user.id !== userId)
       return res.status(401).json({ error: "Invalid or expired token" });
@@ -22,40 +22,30 @@ router.get("/:userId", async (req, res) => {
   }
 
   try {
-    const portfolios = await getUserPortfolios(userId);
-    if (!Array.isArray(portfolios) || portfolios.length === 0)
-      return res.json({ totalValue: 0, totalCash: 0, topHoldings: [], dayChange: 0, dayChangePercent: 0 });
+    // Use dashboardService to fetch user dashboard safely
+    const dashboard = await getUserDashboard(userId);
 
-    let totalValue = 0, totalCash = 0, allPositions = [];
-
-    for (const p of portfolios) {
-      const metrics = await recalcPortfolioMetrics(p.id).catch(err => {
-        console.error(`[dashboardRoute] Metrics failed for ${p.id}:`, err.message);
-        return { totalValue: 0, cash: 0 };
-      });
-
-      totalValue += metrics.totalValue ?? 0;
-      totalCash += metrics.cash ?? 0;
-
-      const report = await getPortfolioReport(p.id).catch(err => {
-        console.error(`[dashboardRoute] Report failed for ${p.id}:`, err.message);
-        return { positions: [] };
-      });
-
-      if (Array.isArray(report.positions)) allPositions.push(...report.positions);
-    }
-
-    allPositions = allPositions.filter(Boolean);
-    allPositions.sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0));
-    const topHoldings = allPositions.slice(0, 10);
-
-    const dayChange = allPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl ?? 0), 0);
-    const dayChangePercent = totalValue ? (dayChange / (totalValue - dayChange)) * 100 : 0;
-
-    res.json({ totalValue, totalCash, topHoldings, dayChange, dayChangePercent });
+    // Ensure full dashboard object for front-end
+    res.json({
+      totalValue: dashboard.totalValue ?? 0,
+      totalCash: dashboard.totalCash ?? 0,
+      topHoldings: Array.isArray(dashboard.topHoldings) ? dashboard.topHoldings : [],
+      dayChange: dashboard.dayChange ?? 0,
+      dayChangePercent: dashboard.dayChangePercent ?? 0,
+      message: dashboard.message ?? null,
+    });
   } catch (err) {
     console.error("[dashboardRoute] Unexpected error:", err.message);
-    res.json({ totalValue: 0, totalCash: 0, topHoldings: [], dayChange: 0, dayChangePercent: 0 });
+
+    // Fallback safe response
+    res.json({
+      totalValue: 0,
+      totalCash: 0,
+      topHoldings: [],
+      dayChange: 0,
+      dayChangePercent: 0,
+      message: "Failed to fetch dashboard. Please try again later.",
+    });
   }
 });
 
