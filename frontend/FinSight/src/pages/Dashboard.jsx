@@ -36,7 +36,7 @@ const Dashboard = () => {
         totalCash: data.totalCash ?? 0,
         topHoldings: Array.isArray(data.topHoldings) ? data.topHoldings : [],
         dayChange: data.dayChange ?? 0,
-        dayChangePercent: data.dayChangePercent ?? 0,
+        dayChangePercent: Number(data.dayChangePercent?.toFixed(2)) ?? 0,
       });
     } catch (err) {
       console.error("Dashboard error:", err);
@@ -129,7 +129,7 @@ const Dashboard = () => {
             <tbody className="divide-y divide-gray-800">
               {dashboardData.topHoldings.length > 0 ? (
                 dashboardData.topHoldings.map((stock) => (
-                  <tr key={stock.symbol} className="hover:bg-gray-800/50 transition-colors">
+                  <tr key={stock.uniqueKey} className="hover:bg-gray-800/50 transition-colors">
                     <td className="p-4">
                       <div className="font-bold text-white">{stock.symbol ?? "—"}</div>
                       <div className="text-xs text-gray-500">{stock.name ?? "—"}</div>
