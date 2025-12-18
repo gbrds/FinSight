@@ -1,11 +1,11 @@
-import { supabase } from './supabaseClient.js';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from "./supabaseClient.js";
+import { v4 as uuidv4 } from "uuid";
 
 export async function createPortfolio({ user_id, name }) {
   try {
     const id = uuidv4();
     const { data, error } = await supabase
-      .from('portfolios')
+      .from("portfolios")
       .insert([{ id, user_id, name }])
       .select();
 
@@ -20,9 +20,9 @@ export async function createPortfolio({ user_id, name }) {
 export async function getUserPortfolios(user_id) {
   try {
     const { data, error } = await supabase
-      .from('portfolios')
-      .select('*')
-      .eq('user_id', user_id);
+      .from("portfolios")
+      .select("*")
+      .eq("user_id", user_id);
 
     if (error) throw error;
     return data || [];

@@ -77,7 +77,9 @@ const Login = ({ setSession }) => {
         </p>
 
         {errorMessage && (
-          <p className="text-red-500 text-sm mb-4 text-center">{errorMessage}</p>
+          <p className="text-red-500 text-sm mb-4 text-center">
+            {errorMessage}
+          </p>
         )}
 
         <form onSubmit={handleAuth} className="space-y-4">
