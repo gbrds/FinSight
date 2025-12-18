@@ -42,7 +42,9 @@ const Finance = () => {
     const fetchFinanceData = async () => {
       try {
         setLoading(true);
+        const token = localStorage.getItem("token");
         const storedUser = localStorage.getItem("userData");
+
         if (!storedUser) {
           setError("No user found. Please log in.");
           setLoading(false);
@@ -53,10 +55,18 @@ const Finance = () => {
         const uId = user.id || user._id;
         setUserId(uId);
 
-        const response = await fetch(
-          `${BACKEND_URL}/api/finance/userdata/${uId}`
-        );
+        const response = await fetch(`${BACKEND_URL}/api/finance/userdata`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 401)
+          throw new Error("Unauthorized. Please log in again.");
         if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
         const userData = await response.json();
 
         setTransactions(userData.transactions || []);
@@ -72,6 +82,7 @@ const Finance = () => {
 
     fetchFinanceData();
   }, []);
+
   // Open Modal for New Transaction
   const openAddModal = () => {
     setEditingTx(null);
@@ -116,6 +127,9 @@ const Finance = () => {
       return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) return alert("Session expired. Please login again.");
+
     // 2. Calculate correct +/- amount
     const finalAmount =
       formData.type === "expense"
@@ -129,7 +143,10 @@ const Finance = () => {
           `${BACKEND_URL}/api/finance/transactions/${editingTx.id}`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
               userId: userId,
               merchant: formData.merchant,
@@ -147,7 +164,8 @@ const Finance = () => {
         }
       } else {
         //  CREATE (ADD) LOGIC
-        if (!accounts.length) return alert("No account found");
+        if (!accounts.length)
+          return alert("No account found. Please contact support.");
 
         const newTx = {
           userId: userId,
@@ -168,7 +186,10 @@ const Finance = () => {
           `${BACKEND_URL}/api/finance/transactions`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify(newTx),
           }
         );
@@ -192,10 +213,15 @@ const Finance = () => {
       return;
 
     try {
+      const token = localStorage.getItem("token");
+
       const response = await fetch(
         `${BACKEND_URL}/api/finance/transactions/${id}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -418,7 +444,7 @@ const Finance = () => {
         </div>
       </div>
 
-      {/*  SHARED POPUP ADD / EDIT*/}
+      {/* SHARED POPUP ADD / EDIT*/}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">

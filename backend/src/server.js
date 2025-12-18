@@ -10,7 +10,8 @@ import meRouter from "./routes/meRoute.js";
 import portfolioRoute from "./routes/portfolioRoute.js";
 import portfolioPositionRoute from "./routes/portfolioPositionRoute.js";
 import transactionRoute from "./routes/transactionRoute.js";
-import portfolioRecalcRouter from './routes/portfolioRecalc.js';
+import portfolioRecalcRouter from "./routes/portfolioRecalc.js";
+import financeRouter from "./routes/financeRoutes.js";
 
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 
@@ -36,13 +37,14 @@ app.use("/api/me", authMiddleware, meRouter); // current user info
 app.use("/api/portfolio", authMiddleware, portfolioRoute); // portfolios
 app.use("/api/portfolio", authMiddleware, portfolioPositionRoute);
 app.use("/api/transactions", authMiddleware, transactionRoute);
-app.use('/api/portfolio', authMiddleware, portfolioRecalcRouter);
+app.use("/api/portfolio", authMiddleware, portfolioRecalcRouter);
+app.use("/api/finance", authMiddleware, financeRouter);
 
 // ----------------------
 // Other API routes (decide if auth required)
 // ----------------------
 app.use("/api", tickersRouter); // leave public if needed
-app.use("/api", failedRouter);  // leave public if needed
+app.use("/api", failedRouter); // leave public if needed
 app.use("/api/dashboard", authMiddleware, dashboardRouter); // optional: protect dashboard
 
 // ----------------------
@@ -55,5 +57,4 @@ app.get("/", (_, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-
 });
