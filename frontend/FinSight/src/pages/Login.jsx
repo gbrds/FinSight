@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/Logo.png";
 
 const BACKEND_URL = "http://localhost:3001";
 
@@ -57,10 +58,12 @@ const Login = ({ setSession }) => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-4">
-      <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center font-bold text-black text-xl">
-          F
-        </div>
+      <div className="flex items-center gap-3 mb-8">
+        <img
+          src={logo}
+          alt="FinSight Logo"
+          className="w-12 h-12 object-contain"
+        />
         <span className="text-3xl font-bold text-white tracking-tight">
           FinSight
         </span>

@@ -11,6 +11,7 @@ import portfolioRoute from "./routes/portfolioRoute.js";
 import portfolioPositionRoute from "./routes/portfolioPositionRoute.js";
 import transactionRoute from "./routes/transactionRoute.js";
 import portfolioRecalcRouter from "./routes/portfolioRecalc.js";
+import financeRouter from "./routes/financeRoutes.js";
 
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 
@@ -37,6 +38,7 @@ app.use("/api/portfolio", authMiddleware, portfolioRoute); // portfolios
 app.use("/api/portfolio", authMiddleware, portfolioPositionRoute);
 app.use("/api/transactions", authMiddleware, transactionRoute);
 app.use("/api/portfolio", authMiddleware, portfolioRecalcRouter);
+app.use("/api/finance", authMiddleware, financeRouter);
 
 // ----------------------
 // Other API routes (decide if auth required)
