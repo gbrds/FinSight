@@ -137,3 +137,46 @@ export async function getEquityCurve(portfolio_id, limit = 100) {
     return [];
   }
 }
+
+export async function getUserEquityCurve(user_id, limit = 200) {
+  try {
+    // 1️⃣ Fetch user portfolios
+    const { data: portfolios, error: pErr } = await supabase
+      .from("portfolios")
+      .select("id")
+      .eq("user_id", user_id);
+
+    if (pErr) throw pErr;
+    if (!portfolios?.length) return [];
+
+    const portfolioIds = portfolios.map(p => p.id);
+
+    // 2️⃣ Fetch equity curves
+    const { data, error } = await supabase
+      .from("portfolio_equity_curve")
+      .select("portfolio_id, timestamp, total_value")
+      .in("portfolio_id", portfolioIds)
+      .order("timestamp", { ascending: true })
+      .limit(limit * portfolioIds.length);
+
+    if (error) throw error;
+
+    // 3️⃣ Aggregate across portfolios
+    const aggregated = {};
+
+    for (const row of data) {
+      const t = row.timestamp;
+      if (!aggregated[t]) {
+        aggregated[t] = { date: t, totalValue: 0 };
+      }
+      aggregated[t].totalValue += row.total_value ?? 0;
+    }
+
+    return Object.values(aggregated).sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+  } catch (err) {
+    console.error("[reportingService] getUserEquityCurve error:", err.message);
+    return [];
+  }
+}

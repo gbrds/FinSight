@@ -1,51 +1,72 @@
-// routes/dashboardRoute.js
 import express from "express";
+import { getUserEquityCurve } from "../services/reportingService.js";
 import { supabase } from "../services/supabaseClient.js";
-import { getUserDashboard } from "../services/dashboardService.js";
 
 const router = express.Router();
 
+/**
+ * GET /api/dashboard/:userId
+ */
 router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
-  const token = req.headers.authorization?.replace("Bearer ", "");
-
-  if (!token) return res.status(401).json({ error: "Missing auth token" });
 
   try {
-    // Verify token
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user || data.user.id !== userId)
-      return res.status(401).json({ error: "Invalid or expired token" });
-  } catch (err) {
-    console.error("[dashboardRoute] Auth failed:", err.message);
-    return res.status(500).json({ error: "Auth verification failed" });
-  }
+    // 1️⃣ Fetch portfolios
+    const { data: portfolios, error: pErr } = await supabase
+      .from("portfolios")
+      .select("id, cash_balance")
+      .eq("user_id", userId);
 
-  try {
-    // Use dashboardService to fetch user dashboard safely
-    const dashboard = await getUserDashboard(userId);
+    if (pErr) throw pErr;
 
-    // Ensure full dashboard object for front-end
+    const portfolioIds = portfolios.map(p => p.id);
+
+    // 2️⃣ Fetch latest position metrics (for top holdings)
+    const { data: metrics } = await supabase
+      .from("portfolio_position_metrics")
+      .select("*")
+      .in("portfolio_id", portfolioIds);
+
+    // Aggregate by symbol
+    const bySymbol = {};
+    for (const m of metrics || []) {
+      if (!bySymbol[m.symbol]) {
+        bySymbol[m.symbol] = {
+          symbol: m.symbol,
+          currentPrice: m.current_price ?? 0,
+          marketValue: 0,
+          unrealizedPnl: 0,
+        };
+      }
+      bySymbol[m.symbol].marketValue += m.market_value ?? 0;
+      bySymbol[m.symbol].unrealizedPnl += m.unrealized_pnl ?? 0;
+    }
+
+    const topHoldings = Object.values(bySymbol)
+      .sort((a, b) => b.marketValue - a.marketValue)
+      .slice(0, 5);
+
+    // 3️⃣ Equity curve (THIS IS THE GRAPH DATA)
+    const equityCurve = await getUserEquityCurve(userId);
+
+    // 4️⃣ Totals
+    const totalValue = equityCurve.at(-1)?.totalValue ?? 0;
+    const totalCash = portfolios.reduce(
+      (sum, p) => sum + (p.cash_balance ?? 0),
+      0
+    );
+
     res.json({
-      totalValue: dashboard.totalValue ?? 0,
-      totalCash: dashboard.totalCash ?? 0,
-      topHoldings: Array.isArray(dashboard.topHoldings) ? dashboard.topHoldings : [],
-      dayChange: dashboard.dayChange ?? 0,
-      dayChangePercent: dashboard.dayChangePercent ?? 0,
-      message: dashboard.message ?? null,
-    });
-  } catch (err) {
-    console.error("[dashboardRoute] Unexpected error:", err.message);
-
-    // Fallback safe response
-    res.json({
-      totalValue: 0,
-      totalCash: 0,
-      topHoldings: [],
-      dayChange: 0,
+      totalValue,
+      totalCash,
+      topHoldings,
+      equityCurve,
+      dayChange: 0, // optional later
       dayChangePercent: 0,
-      message: "Failed to fetch dashboard. Please try again later.",
     });
+  } catch (err) {
+    console.error("[dashboardRoute] error:", err.message);
+    res.status(500).json({ error: "Failed to load dashboard" });
   }
 });
 
