@@ -36,7 +36,7 @@ app.use("/api/me", authMiddleware, meRouter); // current user info
 app.use("/api/portfolio", authMiddleware, portfolioRoute); // portfolios
 app.use("/api/portfolio", authMiddleware, portfolioPositionRoute);
 app.use("/api/transactions", authMiddleware, transactionRoute);
-app.use('/api/portfolio', portfolioRecalcRouter);
+app.use('/api/portfolio', authMiddleware, portfolioRecalcRouter);
 
 // ----------------------
 // Other API routes (decide if auth required)
