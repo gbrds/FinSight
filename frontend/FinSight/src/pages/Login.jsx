@@ -43,7 +43,7 @@ const Login = ({ setSession }) => {
       if (!res.ok) throw new Error(data.error || "Authentication failed");
 
       // Save session and user
-      localStorage.setItem("sessionToken", data.sessionToken || "");
+      localStorage.setItem("token", data.sessionToken || "");
       localStorage.setItem("userData", JSON.stringify(data.user));
 
       setSession({ token: data.sessionToken, user: data.user });
@@ -77,7 +77,9 @@ const Login = ({ setSession }) => {
         </p>
 
         {errorMessage && (
-          <p className="text-red-500 text-sm mb-4 text-center">{errorMessage}</p>
+          <p className="text-red-500 text-sm mb-4 text-center">
+            {errorMessage}
+          </p>
         )}
 
         <form onSubmit={handleAuth} className="space-y-4">

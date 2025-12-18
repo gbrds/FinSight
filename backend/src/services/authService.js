@@ -1,42 +1,43 @@
-import { supabase, supabaseAdmin } from "./supabaseClient.js";
+import { supabase } from "./supabaseClient.js";
 
 /**
- * Creates a new user in Supabase Auth and your 'users' table
+ * Signup user and create profile row
  */
-export async function signupUser({ email, password, fullName }) {
-  if (!email || !password || !fullName) {
+export async function signupUser({ email, fullName, password }) {
+  if (!email || !fullName || !password) {
     throw new Error("Email, password, and full name are required.");
   }
 
-  // 1️⃣ Create user in Auth table (service key)
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    email_confirm: true,
-    user_metadata: { display_name: fullName },
+    options: {
+      data: { display_name: fullName },
+    },
   });
-  if (error) throw error;
 
-  // Safely extract the auth ID
-  const userId = data?.user?.id || data?.id;
-  if (!userId) throw new Error("Failed to get new user's auth ID");
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error("User creation failed");
 
-  // 2️⃣ Insert into 'users' table
-  const { error: dbError } = await supabaseAdmin.from("users").insert([
-    {
-      id: userId, // must be explicit to match auth ID
+  const user = data.user;
+
+  const { error: profileError } = await supabase
+    .from("users")
+    .insert({
+      id: user.id,
       display_name: fullName,
       currency_default: "EUR",
       settings: {},
-    },
-  ]);
-  if (dbError) throw dbError;
+      deleted: false,
+    });
 
-  return { message: "User created successfully", userId };
+  if (profileError) throw new Error(profileError.message);
+
+  return { user };
 }
 
 /**
- * Logs in a user via Supabase Auth (anon key)
+ * Login user (blocks deleted accounts)
  */
 export async function loginUser({ email, password }) {
   if (!email || !password) throw new Error("Email and password are required");
@@ -45,21 +46,58 @@ export async function loginUser({ email, password }) {
     email,
     password,
   });
-  if (error) throw error;
 
-  const userId = data?.user?.id;
-  if (!userId) throw new Error("Failed to get user ID after login");
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error("Signin failed");
 
-  // Fetch user's profile from 'users' table
+  const userId = data.user.id;
+
   const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("*")
     .eq("id", userId)
-    .single();
-  if (profileError) throw profileError;
+    .eq("deleted", false)
+    .maybeSingle();
+
+  if (profileError) throw new Error(profileError.message);
+  if (!profile) throw new Error("Account has been deleted");
 
   return {
     sessionToken: data.session.access_token,
     user: profile,
   };
+}
+
+/**
+ * Logout (frontend-driven, kept for symmetry)
+ */
+export async function logoutUser() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+/**
+ * Soft delete user profile
+ */
+export async function softDeleteUser(token) {
+  if (!token) throw new Error("Missing auth token");
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(token);
+
+  if (userError || !user) {
+    throw new Error("Invalid or expired token");
+  }
+
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ deleted: true })
+    .eq("id", user.id);
+
+  if (updateError) throw updateError;
+
+  return true;
 }

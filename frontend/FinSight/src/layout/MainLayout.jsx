@@ -36,14 +36,14 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick }) => (
   </Link>
 );
 
-const MainLayout = () => {
+const MainLayout = ({ setSession }) => {
   const location = useLocation();
-  const navigate = useNavigate(); // Hook to change pages manually
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false); // State for dropdown
-
-  // Close dropdown if clicking outside of it
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
+
+  // Close dropdown if clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -54,10 +54,25 @@ const MainLayout = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    // In the future: Supabase logout function here
-    console.log("Logging out...");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      // Clear localStorage
+      localStorage.removeItem("sessionToken");
+      localStorage.removeItem("userData");
+
+      // Optional: call backend logout endpoint
+      await fetch("http://localhost:3001/api/auth/logout", {
+        method: "POST",
+      });
+
+      // Clear session state
+      setSession(null);
+
+      // Navigate to login page
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout failed:", err.message);
+    }
   };
 
   return (
@@ -161,7 +176,7 @@ const MainLayout = () => {
           <div className="flex items-center gap-4">
 
 
-            {/* PROFILE DROPDOWN START*/}
+            {/* PROFILE DROPDOWN START */}
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -175,9 +190,7 @@ const MainLayout = () => {
                 <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl py-1 z-50">
                   <div className="px-4 py-2 border-b border-gray-800">
                     <p className="text-sm font-bold text-white">John Doe</p>
-                    <p className="text-xs text-gray-500 truncate">
-                      user@example.com
-                    </p>
+                    <p className="text-xs text-gray-500 truncate">user@example.com</p>
                   </div>
 
                   <Link

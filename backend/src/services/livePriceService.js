@@ -1,55 +1,72 @@
 import { supabase } from "./supabaseClient.js";
 
 export async function saveLivePrices(prices) {
-  console.log("[saveLivePrices] Got:", Object.keys(prices));
+  const symbols = Object.keys(prices);
+  console.log("[saveLivePrices] Incoming symbols:", symbols);
 
-  for (const symbol in prices) {
-    const entry = prices[symbol];
-    const original = entry.original;
-    const used = entry.used_symbol;
+  if (symbols.length === 0) {
+    console.log("[saveLivePrices] Nothing to save");
+    return;
+  }
+
+  for (const key of symbols) {
+    const entry = prices[key];
+
+    const original = entry.original ?? key;
+    const used = entry.used_symbol ?? key;
     const price = entry.price;
 
+    const now = new Date().toISOString();
+
     try {
-      // -------------------------------------------------------
-      // FAILED FETCH — mark pending_fetch as fetched=true
-      // -------------------------------------------------------
-      if (!price) {
-        console.log(`[FAIL] ${original} → marking fetched=true`);
+      /* =======================================================
+         FAILED FETCH → mark pending_fetch as fetched = true
+         ======================================================= */
+      if (price === null || price === undefined || Number.isNaN(price)) {
+        console.log(`[FAIL] ${original} → no price, marking fetched=true`);
 
         const { error } = await supabase
           .from("pending_fetch")
           .upsert(
-            { symbol: original, fetched: true },
-            { onConflict: ["symbol"] }
+            {
+              symbol: original,
+              fetched: true,
+            },
+            { onConflict: "symbol" }
           );
 
-        if (error) console.error("[DB ERROR] pending_fetch fail:", error);
+        if (error) {
+          console.error("[DB ERROR] pending_fetch upsert:", error);
+        }
+
         continue;
       }
 
-      // -------------------------------------------------------
-      // SUCCESS — save into live_prices
-      // -------------------------------------------------------
-      console.log(`[OK] Saving price for ${used}: ${price}`);
+      /* =======================================================
+         SUCCESS → upsert live_prices
+         ======================================================= */
+      console.log(`[OK] ${used} → ${price}`);
 
-      const now = new Date().toISOString();
-
-      const { error: lpErr } = await supabase
+      const { error: liveErr } = await supabase
         .from("live_prices")
         .upsert(
-          { symbol: used, price, currency: "USD", scraped_at: now },
-          { onConflict: ["symbol"] }
+          {
+            symbol: used,
+            price,
+            currency: "USD",
+            scraped_at: now,
+          },
+          { onConflict: "symbol" }
         );
 
-      if (lpErr) {
-        console.error("[DB ERROR] live_prices:", lpErr);
+      if (liveErr) {
+        console.error("[DB ERROR] live_prices upsert:", liveErr);
         continue;
       }
 
-      // -------------------------------------------------------
-      // ALSO INSERT INTO price_history  
-      // Trigger will auto-delete old candles
-      // -------------------------------------------------------
+      /* =======================================================
+         INSERT price_history (append-only)
+         ======================================================= */
       const { error: histErr } = await supabase
         .from("price_history")
         .insert({
@@ -60,22 +77,24 @@ export async function saveLivePrices(prices) {
 
       if (histErr) {
         console.error("[DB ERROR] price_history insert:", histErr);
-        // continue; // still safe to clean pending_fetch
+        // non-fatal
       }
 
-      // -------------------------------------------------------
-      // CLEANUP pending_fetch
-      // -------------------------------------------------------
+      /* =======================================================
+         CLEAN pending_fetch
+         ======================================================= */
       const { error: delErr } = await supabase
         .from("pending_fetch")
         .delete()
         .eq("symbol", original);
 
-      if (delErr) console.error("[DB ERROR] cleanup:", delErr);
-      else console.log(`[CLEANUP] Removed ${original} from pending_fetch`);
-
+      if (delErr) {
+        console.error("[DB ERROR] pending_fetch delete:", delErr);
+      } else {
+        console.log(`[CLEANUP] ${original} removed from pending_fetch`);
+      }
     } catch (err) {
-      console.error("[UNHANDLED ERROR] saveLivePrices:", err);
+      console.error("[UNHANDLED] saveLivePrices:", err);
     }
   }
 }
