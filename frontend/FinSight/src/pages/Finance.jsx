@@ -38,48 +38,48 @@ const Finance = () => {
   });
 
   // Fetch User Finance Data on Load
-  useEffect(() => {
-    const fetchFinanceData = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("userData");
+  const fetchFinanceData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("userData");
 
-        if (!storedUser) {
-          setError("No user found. Please log in.");
-          setLoading(false);
-          return;
-        }
-
-        const user = JSON.parse(storedUser);
-        const uId = user.id || user._id;
-        setUserId(uId);
-
-        const response = await fetch(`${BACKEND_URL}/api/finance/userdata`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401)
-          throw new Error("Unauthorized. Please log in again.");
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-        const userData = await response.json();
-
-        setTransactions(userData.transactions || []);
-        setAccounts(userData.accounts || []);
-        setCategories(userData.categories || []);
-      } catch (err) {
-        console.error("Error loading finance data:", err);
-        setError("Could not load financial history.");
-      } finally {
+      if (!storedUser) {
+        setError("No user found. Please log in.");
         setLoading(false);
+        return;
       }
-    };
 
+      const user = JSON.parse(storedUser);
+      const uId = user.id || user._id;
+      setUserId(uId);
+
+      const response = await fetch(`${BACKEND_URL}/api/finance/userdata`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401)
+        throw new Error("Unauthorized. Please log in again.");
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+      const userData = await response.json();
+
+      setTransactions(userData.transactions || []);
+      setAccounts(userData.accounts || []);
+      setCategories(userData.categories || []);
+    } catch (err) {
+      console.error("Error loading finance data:", err);
+      setError("Could not load financial history.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchFinanceData();
   }, []);
 
@@ -137,9 +137,11 @@ const Finance = () => {
         : Math.abs(Number(formData.amount));
 
     try {
+      let response;
+
       if (editingTx) {
-        // UPDATE (EDIT) LOGIC
-        const response = await fetch(
+        // --- UPDATE (EDIT) LOGIC ---
+        response = await fetch(
           `${BACKEND_URL}/api/finance/transactions/${editingTx.id}`,
           {
             method: "PUT",
@@ -157,13 +159,8 @@ const Finance = () => {
             }),
           }
         );
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to update");
-        }
       } else {
-        //  CREATE (ADD) LOGIC
+        // --- CREATE (ADD) LOGIC ---
         if (!accounts.length)
           return alert("No account found. Please contact support.");
 
@@ -182,25 +179,32 @@ const Finance = () => {
           ],
         };
 
-        const response = await fetch(
-          `${BACKEND_URL}/api/finance/transactions`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(newTx),
-          }
-        );
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to create");
-        }
+        response = await fetch(`${BACKEND_URL}/api/finance/transactions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(newTx),
+        });
       }
 
-      window.location.reload();
+      // --- PARSE RESPONSE & CHECK FOR NEW TOKEN ---
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Operation failed");
+      }
+
+      // *** CRITICAL FIX: Update token if backend sent a new one ***
+      if (data.token) {
+        console.log("Token rotated successfully");
+        localStorage.setItem("token", data.token);
+      }
+
+      // Update UI and Close Modal
+      await fetchFinanceData();
+      setShowModal(false);
     } catch (err) {
       console.error("Submission Error:", err);
       alert(`Error: ${err.message}`);
