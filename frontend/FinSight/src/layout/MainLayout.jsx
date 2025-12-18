@@ -159,10 +159,7 @@ const MainLayout = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-400 hover:text-white relative">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full"></span>
-            </button>
+
 
             {/* PROFILE DROPDOWN START*/}
             <div className="relative" ref={profileRef}>

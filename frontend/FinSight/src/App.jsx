@@ -16,10 +16,13 @@ function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     const token = localStorage.getItem("sessionToken");
-    const user = JSON.parse(localStorage.getItem("userData") || "null");
-    if (token && user) setSession({ token, user });
+    const user = safeJSONParse(localStorage.getItem("userData"));
+
+    if (token && user) {
+      setSession({ token, user });
+    }
     setLoading(false);
   }, []);
 

@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { spawnPythonPriceService } from "./services/pythonService.js";
+//import { spawnPythonPriceService } from "./services/pythonService.js";
 import tickersRouter from "./routes/tickers.js";
 import authRoutes from "./routes/authRoutes.js";
 
@@ -14,7 +14,7 @@ app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
 // Start Python price service
-spawnPythonPriceService();
+//spawnPythonPriceService();
 
 // Mount routers
 app.use("/tickers", tickersRouter);

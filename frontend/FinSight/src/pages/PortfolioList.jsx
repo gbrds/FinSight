@@ -10,6 +10,9 @@ import {
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { mockPortfolios } from "../data/mockData";
+import { useState } from "react";
+import CreatePortfolioModal from "../../components/CreatePortfolioModal.jsx";
+
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -20,6 +23,8 @@ const PortfolioList = () => {
     (acc, curr) => acc + curr.value,
     0
   );
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div className="space-y-8">
@@ -34,10 +39,21 @@ const PortfolioList = () => {
             ${totalNetWorth.toLocaleString()}
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-lg font-semibold transition-colors">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+        >
           <Plus size={18} />
           <span>Create Portfolio</span>
         </button>
+            <CreatePortfolioModal
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      onCreate={(name) => {
+        console.log("New portfolio name:", name);
+        // hiljem: API / state / backend
+      }}
+    />
       </div>
 
       {/* Grid of Portfolios */}
