@@ -54,7 +54,4 @@ app.get("/", (_, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-
-  // 🔍 TEMP DEBUG TEST
-  await logUserFinanceData("f85b3b68-8991-48b2-84fd-5dbcca3ab267");
 });

@@ -1,70 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 
-const CreatePortfolioModal = ({ isOpen, onClose, onCreate }) => {
+const CreatePortfolioModal = ({ onClose, onCreate }) => {
   const [name, setName] = useState("");
+  const modalRef = useRef(null);
 
-  if (!isOpen) return null;
+  // Close modal if clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
 
-  const handleCreate = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
     if (!name.trim()) return;
-    onCreate(name);
+    onCreate(name.trim());
     setName("");
-    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+        ref={modalRef}
+        className="bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-lg relative"
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+        >
+          <X size={20} />
+        </button>
 
-      {/* Modal */}
-      <div className="relative bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md p-6 z-10">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">
-            Create New Portfolio
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition"
-          >
-            <X size={20} />
-          </button>
-        </div>
+        <h2 className="text-xl font-bold text-white mb-4">Create New Portfolio</h2>
 
-        {/* Input */}
-        <div className="mb-6">
-          <label className="block text-sm text-gray-400 mb-2">
-            Portfolio Name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Long Term Investments"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Portfolio Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-green-500 transition-colors"
+              placeholder="My New Portfolio"
+              required
+            />
+          </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            className="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
-          >
-            Create Portfolio
-          </button>
-        </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-400 text-black font-semibold transition-colors"
+            >
+              Create
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

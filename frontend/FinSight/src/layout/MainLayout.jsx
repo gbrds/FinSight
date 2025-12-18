@@ -99,7 +99,12 @@ const MainLayout = ({ setSession }) => {
             <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center font-bold text-black">
               F
             </div>
-            <span className="text-xl font-bold tracking-tight">FinSight</span>
+            <span
+            onClick={() => navigate("/")}
+            className="text-xl font-bold tracking-tight cursor-pointer hover:text-green-400 transition-colors"
+          >
+            FinSight
+          </span>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}

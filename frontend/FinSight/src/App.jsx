@@ -55,7 +55,7 @@ useEffect(() => {
           element={session ? <MainLayout setSession={setSession} /> : <Navigate to="/login" />}
         >
         <Route index element={<Dashboard />} />
-        <Route path="portfolios" element={<PortfolioList />} />
+        <Route path="portfolios" element={<PortfolioList session={session} />} />
         <Route path="portfolios/:id" element={<PortfolioDetail />} />
         <Route path="stocks" element={<MarketResearch />} />
         <Route path="stocks/:ticker" element={<StockDetail />} />
