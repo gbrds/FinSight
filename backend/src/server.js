@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { spawnPythonPriceService } from "./services/pythonService.js";
-
+//import { spawnPythonPriceService } from "./services/pythonService.js";
 import tickersRouter from "./routes/tickers.js";
 import authRoutes from "./routes/authRoutes.js";
 import failedRouter from "./routes/failed.js";
@@ -22,8 +21,8 @@ const PORT = 3001;
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
-// Spawn background Python price service
-spawnPythonPriceService();
+// Start Python price service
+//spawnPythonPriceService();
 
 // ----------------------
 // Public / Unauthenticated Routes

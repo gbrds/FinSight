@@ -25,7 +25,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     const token = localStorage.getItem("sessionToken");
     const user = safeJSONParse(localStorage.getItem("userData"));
 
@@ -55,7 +55,7 @@ function App() {
           element={session ? <MainLayout setSession={setSession} /> : <Navigate to="/login" />}
         >
         <Route index element={<Dashboard />} />
-        <Route path="portfolios" element={<PortfolioList />} />
+        <Route path="portfolios" element={<PortfolioList session={session} />} />
         <Route path="portfolios/:id" element={<PortfolioDetail />} />
         <Route path="stocks" element={<MarketResearch />} />
         <Route path="stocks/:ticker" element={<StockDetail />} />
