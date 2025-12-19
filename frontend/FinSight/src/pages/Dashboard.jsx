@@ -5,6 +5,7 @@ import {
   DollarSign,
   Activity,
 } from "lucide-react";
+import { authFetch } from "../services/api.js";
 
 import EquityAreaChart from "../components/EquityAreaChart";
 
@@ -30,11 +31,8 @@ const Dashboard = () => {
       if (!token || !userData?.id)
         throw new Error("No login token found. Please log in.");
 
-      const dashRes = await fetch(
-        `http://localhost:3001/api/dashboard/${userData.id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const dashRes = await authFetch(
+        `http://localhost:3001/api/dashboard/${userData.id}`
       );
 
       if (dashRes.status === 401)
@@ -103,9 +101,8 @@ const Dashboard = () => {
             </div>
           </div>
           <div
-            className={`flex items-center gap-2 text-sm ${
-              isPositive ? "text-green-400" : "text-red-400"
-            }`}
+            className={`flex items-center gap-2 text-sm ${isPositive ? "text-green-400" : "text-red-400"
+              }`}
           >
             {isPositive ? (
               <ArrowUpRight size={16} />
@@ -178,11 +175,10 @@ const Dashboard = () => {
                       ${stock.currentPrice?.toFixed(2) ?? "—"}
                     </td>
                     <td
-                      className={`p-4 font-medium ${
-                        stock.unrealizedPnl >= 0
+                      className={`p-4 font-medium ${stock.unrealizedPnl >= 0
                           ? "text-green-400"
                           : "text-red-400"
-                      }`}
+                        }`}
                     >
                       {stock.unrealizedPnl >= 0 ? "+" : ""}
                       {stock.unrealizedPnl?.toFixed(2) ?? "—"}

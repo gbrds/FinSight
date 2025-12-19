@@ -4,6 +4,7 @@ import { Wallet, Plus, ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-r
 import CreatePortfolioModal from "../../components/CreatePortfolioModal";
 import { twMerge } from "tailwind-merge";
 import { clsx } from "clsx";
+import { authFetch } from "../services/api.js";
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -18,11 +19,7 @@ const PortfolioList = ({ session }) => {
     if (!session?.token) return;
 
     try {
-      const res = await fetch("http://localhost:3001/api/portfolio", {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
-      });
+      const res = await authFetch("http://localhost:3001/api/portfolio");
 
       if (!res.ok) throw new Error(`Failed to fetch portfolios (HTTP ${res.status})`);
 

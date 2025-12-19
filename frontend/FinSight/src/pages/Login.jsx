@@ -34,20 +34,20 @@ const Login = ({ setSession }) => {
         body: JSON.stringify(formData),
       });
 
-      let data;
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error("Invalid server response");
-      }
+      const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || "Authentication failed");
 
-      // Save session and user
-      localStorage.setItem("token", data.sessionToken || "");
-      localStorage.setItem("userData", JSON.stringify(data.user));
+      // Save session and tokens
+      const token = data.sessionToken || data.session?.access_token || "";
+      const refreshToken = data.refreshToken || data.session?.refresh_token || "";
+      const user = data.user;
 
-      setSession({ token: data.sessionToken, user: data.user });
+      localStorage.setItem("token", token);
+      localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("userData", JSON.stringify(user));
+
+      setSession({ token, user });
       navigate("/");
     } catch (err) {
       setErrorMessage(err.message);
@@ -55,6 +55,7 @@ const Login = ({ setSession }) => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-4">

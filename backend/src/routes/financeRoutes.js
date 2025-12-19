@@ -6,56 +6,52 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "../services/financeService.js";
-import { supabase } from "../services/supabaseClient.js";
 
 const router = express.Router();
-// POST /api/finance/account
+
+// --- Create Bank Account ---
 router.post("/account", async (req, res) => {
   try {
     const userId = req.user.id;
-    const { accountName, initialBalance } = req.body;
+    const { accountName, initialBalance, type, currency } = req.body;
 
-    const result = await createBankAccount(userId, accountName, initialBalance);
-    res.status(200).json({
-      message: result.created ? "Account created" : "Account retrieved",
-      data: result.data,
-    });
+    if (!accountName) return res.status(400).json({ error: "Account name is required" });
+
+    const result = await createBankAccount(userId, accountName, initialBalance, type, currency);
+    res.status(200).json({ message: result.created ? "Account created" : "Account exists", data: result.data });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/finance/transactions
+// --- Add Transactions ---
 router.post("/transactions", async (req, res) => {
   try {
     const userId = req.user.id;
     const { accountId, transactions } = req.body;
 
-    if (!accountId) throw new Error("Account ID is required");
+    if (!accountId) return res.status(400).json({ error: "Account ID is required" });
+    if (!Array.isArray(transactions) || transactions.length === 0) return res.status(400).json({ error: "Transactions required" });
 
     const data = await addTransactions(userId, accountId, transactions);
-    res.status(201).json({
-      message: `Successfully added ${data.length} transactions`,
-      data,
-    });
+    res.status(201).json({ message: `Successfully added ${data.length} transactions`, data });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/finance/transactions/:id
+// --- Update Transaction ---
 router.put("/transactions/:id", async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
     const updates = req.body;
 
-    delete updates.userId; // Security cleanup
+    if (!updates || Object.keys(updates).length === 0) return res.status(400).json({ error: "No updates provided" });
 
     const updatedTx = await updateTransaction(userId, id, updates);
-
     res.json({ message: "Transaction updated", data: updatedTx });
   } catch (err) {
     console.error(err);
@@ -63,51 +59,41 @@ router.put("/transactions/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/finance/transactions/:id
+// --- Delete Transaction ---
 router.delete("/transactions/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    await deleteTransaction(id);
-    res.json({ message: "Transaction deleted successfully" });
+    const result = await deleteTransaction(id);
+    res.json({ message: result.message });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/finance/transactions
+// --- Get All Transactions for User ---
 router.get("/transactions", async (req, res) => {
   try {
-    const user_id = req.user.id;
+    const userId = req.user.id;
 
-    const { data: accounts } = await supabase
-      .from("finance_accounts")
-      .select("id")
-      .eq("user_id", user_id);
+    const data = await logUserFinanceData(userId);
+    if (!data) return res.status(404).json({ error: "No finance data found" });
 
-    if (!accounts || accounts.length === 0) return res.json([]);
-
-    const accountIds = accounts.map((a) => a.id);
-
-    const { data, error } = await supabase
-      .from("finance_transactions")
-      .select("*")
-      .in("account_id", accountIds)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    res.json(data);
+    // Flatten to transactions
+    res.json(data.transactions);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/finance/userdata
+// --- Get Full User Finance Data ---
 router.get("/userdata", async (req, res) => {
   try {
     const userId = req.user.id;
     const data = await logUserFinanceData(userId);
-    if (!data) throw new Error("Failed to retrieve user data");
+
+    if (!data) return res.status(404).json({ error: "Failed to retrieve user data" });
     res.json(data);
   } catch (err) {
     console.error(err);
