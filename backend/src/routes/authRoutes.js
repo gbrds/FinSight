@@ -1,4 +1,5 @@
 import express from "express";
+import { supabase } from "../services/supabaseClient.js"; // Make sure supabase is imported
 import {
   signupUser,
   loginUser,
@@ -58,5 +59,44 @@ router.post("/delete", async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// ✅ Verify token endpoint
+router.get("/verify", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) throw new Error("Missing Authorization header");
+
+    const token = authHeader.split(" ")[1];
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) return res.status(401).json({ valid: false });
+
+    res.json({ valid: true, user: data.user });
+  } catch {
+    res.status(401).json({ valid: false });
+  }
+});
+
+// Refresh token
+router.post("/refresh", async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) throw new Error("Missing refresh token");
+
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data.session) throw new Error(error?.message || "Failed to refresh");
+
+    res.json({
+      sessionToken: data.session.access_token,
+      refreshToken: data.session.refresh_token,
+    });
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
 
 export default router;

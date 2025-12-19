@@ -25,14 +25,36 @@ function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-    const token = localStorage.getItem("sessionToken");
+  useEffect(() => {
+    const token = localStorage.getItem("token");
     const user = safeJSONParse(localStorage.getItem("userData"));
 
     if (token && user) {
-      setSession({ token, user });
+      // Optional: verify token with backend
+      fetch("http://localhost:3001/api/auth/verify", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Token invalid");
+          return res.json();
+        })
+        .then((data) => {
+          if (data.valid) setSession({ token, user });
+          else {
+            localStorage.removeItem("token");
+            localStorage.removeItem("userData");
+            setSession(null);
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("userData");
+          setSession(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   if (loading)
@@ -54,16 +76,16 @@ useEffect(() => {
           path="/"
           element={session ? <MainLayout setSession={setSession} /> : <Navigate to="/login" />}
         >
-        <Route index element={<Dashboard />} />
-        <Route path="portfolios" element={<PortfolioList session={session} />} />
-        <Route path="portfolios/:id" element={<PortfolioDetail />} />
-        <Route path="stocks" element={<MarketResearch />} />
-        <Route path="stocks/:ticker" element={<StockDetail />} />
-        <Route path="finance" element={<Finance />} />
-        <Route path="settings" element={<Settings setSession={setSession} />} />
-      </Route>
-    </Routes>
-    </BrowserRouter >
+          <Route index element={<Dashboard />} />
+          <Route path="portfolios" element={<PortfolioList session={session} />} />
+          <Route path="portfolios/:id" element={<PortfolioDetail />} />
+          <Route path="stocks" element={<MarketResearch />} />
+          <Route path="stocks/:ticker" element={<StockDetail />} />
+          <Route path="finance" element={<Finance />} />
+          <Route path="settings" element={<Settings setSession={setSession} />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
