@@ -15,16 +15,19 @@ const PortfolioList = ({ session }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Fetch portfolios with totals
   const fetchPortfolios = async () => {
     if (!session?.token) return;
 
     try {
-      const res = await authFetch("http://localhost:3001/api/portfolio");
+      const res = await authFetch("http://localhost:3001/api/portfolio-summary"); // ✅ new endpoint
 
       if (!res.ok) throw new Error(`Failed to fetch portfolios (HTTP ${res.status})`);
 
       const data = await res.json();
-      setPortfolios(data);
+
+      // data: { portfolios: [...], totalValueAll: number }
+      setPortfolios(data.portfolios || []);
     } catch (err) {
       console.error("Failed to fetch portfolios:", err.message);
     } finally {
@@ -83,6 +86,16 @@ const PortfolioList = ({ session }) => {
         </button>
       </div>
 
+      {/* Optional total across all portfolios */}
+      {portfolios.length > 0 && (
+        <div className="text-white font-bold text-xl mb-4">
+          Total Portfolio Value: $
+          {portfolios
+            .reduce((sum, p) => sum + (p.totalValue ?? 0), 0)
+            .toLocaleString()}
+        </div>
+      )}
+
       {/* Grid of Portfolios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {portfolios.map((portfolio) => (
@@ -104,7 +117,7 @@ const PortfolioList = ({ session }) => {
               {portfolio.name}
             </h3>
             <div className="text-2xl font-bold text-white mb-4">
-              ${portfolio.value?.toLocaleString() || 0}
+              ${portfolio.totalValue?.toLocaleString() || 0}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-800">
@@ -114,7 +127,11 @@ const PortfolioList = ({ session }) => {
                   portfolio.change >= 0 ? "text-green-400" : "text-red-400"
                 )}
               >
-                {portfolio.change >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                {portfolio.change >= 0 ? (
+                  <ArrowUpRight size={16} />
+                ) : (
+                  <ArrowDownRight size={16} />
+                )}
                 <span>{portfolio.changePercent ?? 0}%</span>
               </div>
               <div className="text-sm text-gray-500 flex items-center gap-1">
@@ -133,7 +150,7 @@ const PortfolioList = ({ session }) => {
           <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center">
             <Plus size={24} />
           </div>
-          <span className="font-medium">Open New Account</span>
+          <span className="font-medium">Create Portfolio</span>
         </button>
       </div>
 
