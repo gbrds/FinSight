@@ -46,16 +46,17 @@ const MainLayout = ({ setSession }) => {
   const [userName, setUserName] = useState("User");
   const [userEmail, setUserEmail] = useState("");
 
+  // Toggle to hide/show Market Research
+  const showMarketResearch = false;
+
   // Get user data from local storage
   useEffect(() => {
     const storedUser = localStorage.getItem("userData");
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
-
-        const name = user.display_name || "User";
-
-        setUserName(name);
+        if (!user) return;
+        setUserName(user.display_name || "User");
         setUserEmail(user.email || "");
       } catch (error) {
         console.error("Error parsing user data:", error);
@@ -63,7 +64,7 @@ const MainLayout = ({ setSession }) => {
     }
   }, []);
 
-  //  Click Outside to close dropdown function
+  // Click Outside to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -75,21 +76,15 @@ const MainLayout = ({ setSession }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
   const handleLogout = async () => {
     try {
-      // Clear localStorage
-      localStorage.removeItem("sessionToken");
+      localStorage.removeItem("token");
       localStorage.removeItem("userData");
 
-      // Optional: call backend logout endpoint
-      await fetch("http://localhost:3001/api/auth/logout", {
-        method: "POST",
-      });
+      await fetch("http://localhost:3001/api/auth/logout", { method: "POST" });
 
-      // Clear session state
       setSession(null);
-
-      // Navigate to login page
       navigate("/login");
     } catch (err) {
       console.error("Logout failed:", err.message);
@@ -152,13 +147,15 @@ const MainLayout = ({ setSession }) => {
             active={location.pathname.startsWith("/portfolios")}
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <SidebarItem
-            icon={TrendingUp}
-            label="Market Research"
-            path="/stocks"
-            active={location.pathname.startsWith("/stocks")}
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+          {showMarketResearch && (
+            <SidebarItem
+              icon={TrendingUp}
+              label="Market Research"
+              path="/stocks"
+              active={location.pathname.startsWith("/stocks")}
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+          )}
           <SidebarItem
             icon={Wallet}
             label="Personal Finance"
@@ -202,12 +199,7 @@ const MainLayout = ({ setSession }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-400 hover:text-white relative">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full"></span>
-            </button>
-
-            {/* PROFILE DROPDOWN START */}
+            {/* PROFILE DROPDOWN */}
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -216,7 +208,6 @@ const MainLayout = ({ setSession }) => {
                 {userName[0]?.toUpperCase()}
               </button>
 
-              {/* The Menu Itself */}
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl py-1 z-50">
                   <div className="px-4 py-2 border-b border-gray-800">

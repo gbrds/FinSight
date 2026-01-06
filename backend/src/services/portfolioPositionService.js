@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+import { supabasePublic as supabase } from "../clients/supabaseClient.js";
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -69,5 +69,28 @@ export async function addPosition({ portfolio_id, symbol, user_id }) {
   } catch (err) {
     console.error('[portfolioPositionService] addPosition error:', err);
     return null;
+  }
+}
+
+export async function getPositionsByPortfolioId(portfolio_id) {
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_positions')
+      .select(`
+        *,
+        live_prices (price)
+      `)
+      .eq('portfolio_id', portfolio_id);
+
+    if (error) throw error;
+
+    // Map price from live_prices
+    return data.map(pos => ({
+      ...pos,
+      price: pos.live_prices?.price ?? 0,
+    }));
+  } catch (err) {
+    console.error('[portfolioPositionService] getPositionsByPortfolioId error:', err);
+    return [];
   }
 }

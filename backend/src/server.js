@@ -1,6 +1,8 @@
+// server.js
 import express from "express";
 import cors from "cors";
 import { spawnPythonPriceService } from "./services/pythonService.js";
+import { recalcPortfolioMetrics } from "./services/portfolioMetricsAtomicService.js";
 
 import tickersRouter from "./routes/tickers.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -12,8 +14,12 @@ import portfolioPositionRoute from "./routes/portfolioPositionRoute.js";
 import transactionRoute from "./routes/transactionRoute.js";
 import portfolioRecalcRouter from "./routes/portfolioRecalc.js";
 import financeRouter from "./routes/financeRoutes.js";
+import categorieRouter from "./routes/categorieRoute.js";
+import portfolioDetailRoute from "./routes/portfolioDetailRoute.js";
+import portfolioSummaryRoute from "./routes/portfolioSummaryRoute.js"; // <-- NEW
 
 import { authMiddleware } from "./middlewares/authMiddleware.js";
+import { supabaseAdmin as supabase } from "./clients/supabaseClient.js";
 
 const app = express();
 const PORT = 3001;
@@ -22,30 +28,66 @@ const PORT = 3001;
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
-// Spawn background Python price service
+// ----------------------
+// Start Python price service
+// ----------------------
 spawnPythonPriceService();
+
+// ----------------------
+// Recalculate all portfolios at startup (ADMIN)
+// ----------------------
+async function recalcAllPortfolios() {
+  try {
+    const { data: portfolios, error } = await supabaseAdmin
+      .from("portfolios")
+      .select("id");
+
+    if (error) throw error;
+    if (!portfolios?.length) return;
+
+    console.log(
+      `[INIT] Recalculating metrics for ${portfolios.length} portfolios...`
+    );
+    for (const p of portfolios) {
+      await recalcPortfolioMetrics(p.id);
+      console.log(`[INIT] Metrics recalculated for portfolio ${p.id}`);
+    }
+    console.log("[INIT] All portfolio metrics recalculated.");
+  } catch (err) {
+    console.error("[INIT] Failed to recalc portfolios:", err.message);
+  }
+}
+
+recalcAllPortfolios();
 
 // ----------------------
 // Public / Unauthenticated Routes
 // ----------------------
-app.use("/api/auth", authRoutes); // login, signup, logout
+app.use("/api/auth", authRoutes);
 
 // ----------------------
-// Protected Routes
+// Protected Routes (require auth token)
 // ----------------------
-app.use("/api/me", authMiddleware, meRouter); // current user info
-app.use("/api/portfolio", authMiddleware, portfolioRoute); // portfolios
+app.use("/api/me", authMiddleware, meRouter);
+app.use("/api/portfolio", authMiddleware, portfolioRoute);
 app.use("/api/portfolio", authMiddleware, portfolioPositionRoute);
 app.use("/api/transactions", authMiddleware, transactionRoute);
 app.use("/api/portfolio", authMiddleware, portfolioRecalcRouter);
 app.use("/api/finance", authMiddleware, financeRouter);
+app.use("/api/finance/categories", authMiddleware, categorieRouter);
+app.use("/api/dashboard", authMiddleware, dashboardRouter);
+app.use("/api/portfolio", authMiddleware, portfolioDetailRoute);
 
 // ----------------------
-// Other API routes (decide if auth required)
+// NEW: Portfolio summary route
 // ----------------------
-app.use("/api", tickersRouter); // leave public if needed
-app.use("/api", failedRouter); // leave public if needed
-app.use("/api/dashboard", authMiddleware, dashboardRouter); // optional: protect dashboard
+app.use("/api/portfolio-summary", authMiddleware, portfolioSummaryRoute);
+
+// ----------------------
+// Other API routes (public if needed)
+// ----------------------
+app.use("/api", tickersRouter);
+app.use("/api", failedRouter);
 
 // ----------------------
 // Health / root
@@ -55,11 +97,6 @@ app.get("/", (_, res) => {
 });
 
 // Start server
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
-
-// Export the app so the tests can use it
-export default app;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

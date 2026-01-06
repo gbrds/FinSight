@@ -1,6 +1,7 @@
+// routes/dashboardRoute.js
 import express from "express";
 import { getUserEquityCurve } from "../services/reportingService.js";
-import { supabase } from "../services/supabaseClient.js";
+import { supabaseAdmin as supabase } from "../clients/supabaseClient.js";
 
 const router = express.Router();
 
