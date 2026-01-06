@@ -105,19 +105,11 @@ User adds symbol → `pending_fetch` → Python worker fetch → Node parses JSO
 
 ## Meet the Team
 
-|                                                                                                                                                    | GitHub                                                   | Name        | Role                                |
-| :------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------- | :---------- | :---------------------------------- |
-|          <a href="https://github.com/gbrds"><img src="https://github.com/gbrds.png" width="40" height="40" style="border-radius:50%"></a>          | **[@gbrds](https://github.com/gbrds)**                   | Juss Joosep | Project Lead / Full Stack Developer |
-| <a href="https://github.com/CarlRobertMots"><img src="https://github.com/CarlRobertMots.png" width="40" height="40" style="border-radius:50%"></a> | **[@CarlRobertMots](https://github.com/CarlRobertMots)** | Carl-Robert | Full Stack Developer                |
-|      <a href="https://github.com/kylakarla"><img src="https://github.com/kylakarla.png" width="40" height="40" style="border-radius:50%"></a>      | **[@kylakarla](https://github.com/kylakarla)**           | Karl-Markus | Full Stack Developer                |
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Contact
-
-Juss Joosep Holdt - your.email@gmail.com
-
-Project Link: [https://github.com/gbrds/FinSight](https://github.com/gbrds/FinSight)
+|                                                                                                                                                    | GitHub                                                   | Name        | Role                               |
+| :------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------- | :---------- | :--------------------------------- |
+|          <a href="https://github.com/gbrds"><img src="https://github.com/gbrds.png" width="40" height="40" style="border-radius:50%"></a>          | **[@gbrds](https://github.com/gbrds)**                   | Juss Joosep | Project lead, Full Stack Developer |
+| <a href="https://github.com/CarlRobertMots"><img src="https://github.com/CarlRobertMots.png" width="40" height="40" style="border-radius:50%"></a> | **[@CarlRobertMots](https://github.com/CarlRobertMots)** | Carl-Robert | Full Stack Developer               |
+|      <a href="https://github.com/kylakarla"><img src="https://github.com/kylakarla.png" width="40" height="40" style="border-radius:50%"></a>      | **[@kylakarla](https://github.com/kylakarla)**           | Karl-Markus | Full Stack Developer               |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
