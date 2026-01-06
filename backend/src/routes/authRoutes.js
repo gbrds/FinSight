@@ -1,5 +1,6 @@
 import express from "express";
-import { supabase } from "../services/supabaseClient.js"; // Make sure supabase is imported
+import { supabasePublic as supabase } from "../clients/supabaseClient.js";
+
 import {
   signupUser,
   loginUser,

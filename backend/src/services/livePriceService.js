@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient.js";
+import { supabaseAdmin as supabase } from "../clients/supabaseClient.js";
 
 export async function saveLivePrices(prices) {
   const symbols = Object.keys(prices);
