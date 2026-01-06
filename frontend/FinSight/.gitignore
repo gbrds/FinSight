@@ -1,3 +1,8 @@
+# Env
+.env
+.env.*
+!.env.example
+
 # Logs
 logs
 *.log
@@ -7,9 +12,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node
 node_modules
+
+# Builds
 dist
 dist-ssr
+
+# Prisma
+prisma/.env
+
+# Local variants
 *.local
 
 # Editor directories and files
@@ -17,6 +30,7 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

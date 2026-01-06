@@ -12,7 +12,7 @@ const Settings = ({ setSession }) => {
 
   // Logout
   const handleLogout = () => {
-    localStorage.removeItem("sessionToken");
+    localStorage.removeItem("token");
     localStorage.removeItem("userData");
     setSession(null);
   };
@@ -23,7 +23,7 @@ const Settings = ({ setSession }) => {
     setErrorMessage("");
 
     try {
-      const token = localStorage.getItem("sessionToken");
+      const token = localStorage.getItem("token");
       if (!token) throw new Error("No session token");
 
       const res = await fetch(`${BACKEND_URL}/api/auth/delete`, {
@@ -37,7 +37,7 @@ const Settings = ({ setSession }) => {
       if (!res.ok) throw new Error(data.error || "Delete failed");
 
       // Cleanup + logout
-      localStorage.removeItem("sessionToken");
+      localStorage.removeItem("token");
       localStorage.removeItem("userData");
       setSession(null);
       setShowDeleteModal(false);

@@ -55,6 +55,7 @@ const MainLayout = ({ setSession }) => {
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
+        if (!user) return;
         setUserName(user.display_name || "User");
         setUserEmail(user.email || "");
       } catch (error) {
@@ -78,7 +79,7 @@ const MainLayout = ({ setSession }) => {
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem("sessionToken");
+      localStorage.removeItem("token");
       localStorage.removeItem("userData");
 
       await fetch("http://localhost:3001/api/auth/logout", { method: "POST" });

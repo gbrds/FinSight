@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+import { supabaseAdmin as supabase } from "../clients/supabaseClient.js";
 
 export async function recalcPortfolioMetrics(portfolio_id) {
   const now = new Date().toISOString();

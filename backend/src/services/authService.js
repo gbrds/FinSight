@@ -1,19 +1,23 @@
-import { supabase } from "./supabaseClient.js";
+// src/services/authService.js
+import { supabasePublic as supabase } from "../clients/supabaseClient.js";
+import {
+  createUserProfile,
+  getActiveUserById,
+  softDeleteUserById,
+} from "../repositories/userRepository.js";
 
 /**
- * Signup user and create profile row
+ * Signup user and return session
  */
 export async function signupUser({ email, fullName, password }) {
-  if (!email || !fullName || !password) {
-    throw new Error("Email, password, and full name are required.");
-  }
+  if (!email || !fullName || !password)
+    throw new Error("Email, password, full name required");
 
+  // 1️⃣ Supabase signup
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: { display_name: fullName },
-    },
+    options: { data: { display_name: fullName } },
   });
 
   if (error) throw new Error(error.message);
@@ -21,55 +25,54 @@ export async function signupUser({ email, fullName, password }) {
 
   const user = data.user;
 
-  const { error: profileError } = await supabase
-    .from("users")
-    .insert({
+  // 2️⃣ Optionally create a row in Prisma users table
+  try {
+    await createUserProfile({
       id: user.id,
       display_name: fullName,
       currency_default: "EUR",
-      settings: {},
-      deleted: false,
     });
+  } catch (err) {
+    console.warn("Could not create user profile row:", err.message);
+    // Not blocking signup
+  }
 
-  if (profileError) throw new Error(profileError.message);
-
-  return { user };
+  // 3️⃣ Return session tokens
+  return {
+    sessionToken: data.session?.access_token || null,
+    refreshToken: data.session?.refresh_token || null,
+    user,
+  };
 }
 
 /**
  * Login user (blocks deleted accounts)
  */
 export async function loginUser({ email, password }) {
-  if (!email || !password) throw new Error("Email and password are required");
+  if (!email || !password) throw new Error("Email and password required");
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw new Error(error.message);
-  if (!data.user) throw new Error("Signin failed");
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user) throw new Error("Invalid email or password");
 
   const userId = data.user.id;
 
-  const { data: profile, error: profileError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", userId)
-    .eq("deleted", false)
-    .maybeSingle();
-
-  if (profileError) throw new Error(profileError.message);
-  if (!profile) throw new Error("Account has been deleted");
+  // Try fetching profile from Prisma
+  let profile = null;
+  try {
+    profile = await getActiveUserById(userId);
+  } catch (err) {
+    console.warn("Could not fetch user profile immediately:", err.message);
+  }
 
   return {
-    sessionToken: data.session.access_token,
-    user: profile,
+    sessionToken: data.session?.access_token,
+    refreshToken: data.session?.refresh_token,
+    user: profile || { id: userId, email: data.user.email, display_name: data.user.user_metadata?.display_name },
   };
 }
 
 /**
- * Logout (frontend-driven, kept for symmetry)
+ * Logout
  */
 export async function logoutUser() {
   const { error } = await supabase.auth.signOut();
@@ -78,26 +81,16 @@ export async function logoutUser() {
 }
 
 /**
- * Soft delete user profile
+ * Soft delete user
  */
 export async function softDeleteUser(token) {
   if (!token) throw new Error("Missing auth token");
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(token);
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) throw new Error("Invalid or expired token");
 
-  if (userError || !user) {
-    throw new Error("Invalid or expired token");
-  }
-
-  const { error: updateError } = await supabase
-    .from("users")
-    .update({ deleted: true })
-    .eq("id", user.id);
-
-  if (updateError) throw updateError;
+  const userId = data.user.id;
+  await softDeleteUserById(userId);
 
   return true;
 }

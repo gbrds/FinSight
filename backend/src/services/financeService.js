@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient.js";
+import { supabasePublic as supabase } from "../clients/supabaseClient.js";
 
 // --- Create Bank Account ---
 export async function createBankAccount(userId, accountName, initialBalance, type = "bank", currency = "USD") {

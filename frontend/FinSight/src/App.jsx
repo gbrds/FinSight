@@ -39,7 +39,7 @@ function App() {
           return res.json();
         })
         .then((data) => {
-          if (data.valid) setSession({ token, user });
+          if (data.user) setSession({ token, user: data.user });
           else {
             localStorage.removeItem("token");
             localStorage.removeItem("userData");

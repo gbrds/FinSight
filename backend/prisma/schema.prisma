@@ -1,0 +1,168 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model finance_accounts {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              String                 @db.Uuid
+  name                 String
+  type                 String
+  balance              Decimal?               @db.Decimal
+  currency             String                 @default("")
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  users                users                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  finance_transactions finance_transactions[]
+
+  @@unique([user_id, name], map: "unique_user_account_name")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model finance_categories {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              String                 @default(dbgenerated("auth.uid()")) @db.Uuid
+  name                 String
+  color                String?
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  users                users                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  finance_transactions finance_transactions[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model finance_transactions {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id         String             @db.Uuid
+  amount             Decimal            @db.Decimal
+  currency           String
+  category_id        String             @db.Uuid
+  description        String
+  merchant           String?
+  tags               Json?
+  created_at         DateTime           @default(now()) @db.Timestamp(6)
+  paid_at            DateTime           @db.Timestamp(6)
+  source             String
+  finance_accounts   finance_accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  finance_categories finance_categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model live_prices {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  symbol              String                @unique
+  price               Decimal               @db.Decimal
+  currency            String
+  scraped_at          DateTime              @default(now()) @db.Timestamp(6)
+  portfolio_positions portfolio_positions[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pending_fetch {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  symbol   String?  @unique(map: "pending_fetch_ticker_key")
+  added_at DateTime @default(now()) @db.Timestamp(6)
+  fetched  Boolean  @default(false)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model portfolio_equity_curve {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portfolio_id    String     @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  timestamp       DateTime   @db.Timestamp(6)
+  total_value     Decimal    @db.Decimal
+  cash_balance    Decimal    @default(0) @db.Decimal
+  positions_value Decimal    @default(0) @db.Decimal
+  unrealized_pnl  Decimal    @default(0) @db.Decimal
+  realized_pnl    Decimal    @default(0) @db.Decimal
+  portfolios      portfolios @relation(fields: [portfolio_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model portfolio_position_metrics {
+  position_id         String              @id @db.Uuid
+  portfolio_id        String              @db.Uuid
+  symbol              String
+  current_price       Decimal             @db.Decimal
+  market_value        Decimal             @db.Decimal
+  unrealized_pnl      Decimal             @db.Decimal
+  unrealized_pnl_pct  Decimal             @db.Decimal
+  updated_at          DateTime            @default(now()) @db.Timestamptz(6)
+  portfolios          portfolios          @relation(fields: [portfolio_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_portfolio")
+  portfolio_positions portfolio_positions @relation(fields: [position_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_position")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model portfolio_positions {
+  id                         String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portfolio_id               String                      @db.Uuid
+  symbol                     String
+  quantity                   Decimal?                    @db.Decimal
+  avg_buy_price              Decimal?                    @db.Decimal
+  last_updated               DateTime                    @default(now()) @db.Timestamp(6)
+  status                     String
+  opened_at                  DateTime?                   @db.Timestamp(6)
+  closed_at                  DateTime?                   @db.Timestamp(6)
+  realized_pnl               Decimal?                    @default(0) @db.Decimal
+  live_price_id              String?                     @db.Uuid
+  portfolio_position_metrics portfolio_position_metrics?
+  live_prices                live_prices?                @relation(fields: [live_price_id], references: [id], onUpdate: NoAction)
+  portfolios                 portfolios                  @relation(fields: [portfolio_id], references: [id], onDelete: Cascade)
+  transactions               transactions[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model portfolios {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                    String                       @db.Uuid
+  name                       String
+  created_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  cash_balance               Decimal?                     @default(0) @db.Decimal
+  portfolio_equity_curve     portfolio_equity_curve[]
+  portfolio_position_metrics portfolio_position_metrics[]
+  portfolio_positions        portfolio_positions[]
+  users                      users                        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model price_history {
+  id          BigInt   @id @unique @default(autoincrement())
+  symbol      String
+  price       Decimal  @db.Decimal
+  recorded_at DateTime @db.Timestamp(6)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model transactions {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  position_id         String              @db.Uuid
+  type                String
+  quantity            Decimal             @db.Decimal
+  price               Decimal             @db.Decimal
+  currency            String
+  fee                 Decimal             @db.Decimal
+  executed_at         DateTime            @db.Timestamp(6)
+  created_at          DateTime?           @default(now()) @db.Timestamp(6)
+  realized_pnl        Decimal             @default(0) @db.Decimal
+  portfolio_positions portfolio_positions @relation(fields: [position_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                 String               @id @default(dbgenerated("auth.uid()")) @db.Uuid
+  display_name       String
+  currency_default   String               @default("EUR")
+  settings           Json?
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  deleted            Boolean              @default(false)
+  finance_accounts   finance_accounts[]
+  finance_categories finance_categories[]
+  portfolios         portfolios[]
+}

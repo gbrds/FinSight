@@ -1,3 +1,4 @@
+// server.js
 import express from "express";
 import cors from "cors";
 import { spawnPythonPriceService } from "./services/pythonService.js";
@@ -18,7 +19,7 @@ import portfolioDetailRoute from "./routes/portfolioDetailRoute.js";
 import portfolioSummaryRoute from "./routes/portfolioSummaryRoute.js"; // <-- NEW
 
 import { authMiddleware } from "./middlewares/authMiddleware.js";
-import { supabase } from "./services/supabaseClient.js";
+import { supabaseAdmin as supabase } from "./clients/supabaseClient.js";
 
 const app = express();
 const PORT = 3001;
@@ -33,11 +34,11 @@ app.use(express.json());
 spawnPythonPriceService();
 
 // ----------------------
-// Recalculate all portfolios at startup
+// Recalculate all portfolios at startup (ADMIN)
 // ----------------------
 async function recalcAllPortfolios() {
   try {
-    const { data: portfolios, error } = await supabase
+    const { data: portfolios, error } = await supabaseAdmin
       .from("portfolios")
       .select("id");
 

@@ -1,5 +1,5 @@
 // services/portfolioDetailService.js
-import { supabase } from "./supabaseClient.js";
+import { supabasePublic as supabase } from "../clients/supabaseClient.js";
 import { v4 as uuidv4 } from "uuid";
 
 /**

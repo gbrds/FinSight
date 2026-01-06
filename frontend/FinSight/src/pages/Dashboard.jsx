@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  Activity,
-} from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, Activity } from "lucide-react";
 import { authFetch } from "../services/api.js";
 import EquityAreaChart from "../components/EquityAreaChart";
 
@@ -25,53 +20,36 @@ const Dashboard = ({ showEquityChart = true }) => {
 
     try {
       const token = localStorage.getItem("token");
-      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      if (!token) throw new Error("No login token found. Please log in.");
 
-      if (!token || !userData?.id)
-        throw new Error("No login token found. Please log in.");
-
-      const res = await authFetch("http://localhost:3001/api/portfolio-summary");
-      if (!res.ok)
-        throw new Error(`Failed to fetch dashboard data (HTTP ${res.status})`);
+      const res = await authFetch("/api/portfolio-summary");
+      if (res.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+      if (!res.ok) throw new Error(`Failed to fetch dashboard data (HTTP ${res.status})`);
 
       const data = await res.json();
 
-      const totalCash = data.portfolios.reduce((sum, p) => sum + (p.cash ?? 0), 0);
+      const totalCash = data.portfolios?.reduce((sum, p) => sum + (p.cash ?? 0), 0) || 0;
       const totalValue = data.totalValueAll ?? 0;
 
-      const allPositions = data.portfolios
-        .flatMap((p) => p.positions || [])
-        .map((pos) => ({
-          uniqueKey: `${pos.portfolio_id}-${pos.symbol}`,
-          symbol: pos.symbol,
-          name: pos.name ?? pos.symbol,
-          currentPrice: pos.price ?? 0,
-          quantity: pos.quantity ?? 0,
-          marketValue: (pos.price ?? 0) * (pos.quantity ?? 0),
-          unrealizedPnl: ((pos.price ?? 0) - (pos.avg_buy_price ?? 0)) * (pos.quantity ?? 0),
-        }));
+      const allPositions = data.portfolios?.flatMap((p) => p.positions || []).map((pos) => ({
+        uniqueKey: `${pos.portfolio_id}-${pos.symbol}`,
+        symbol: pos.symbol,
+        name: pos.name ?? pos.symbol,
+        currentPrice: pos.price ?? 0,
+        quantity: pos.quantity ?? 0,
+        marketValue: (pos.price ?? 0) * (pos.quantity ?? 0),
+        unrealizedPnl: ((pos.price ?? 0) - (pos.avg_buy_price ?? 0)) * (pos.quantity ?? 0),
+      })) || [];
 
-      const topHoldings = allPositions
-        .sort((a, b) => b.marketValue - a.marketValue)
-        .slice(0, 5);
+      const topHoldings = allPositions.sort((a, b) => b.marketValue - a.marketValue).slice(0, 5);
 
-      setDashboardData({
-        totalValue,
-        totalCash,
-        topHoldings,
-        dayChange: 0,
-        dayChangePercent: 0,
-      });
+      setDashboardData({ totalValue, totalCash, topHoldings, dayChange: 0, dayChangePercent: 0 });
     } catch (err) {
       console.error("Dashboard error:", err);
       setError(err.message || "Failed to load dashboard. Please try again.");
-      setDashboardData({
-        totalValue: 0,
-        totalCash: 0,
-        topHoldings: [],
-        dayChange: 0,
-        dayChangePercent: 0,
-      });
+      setDashboardData({ totalValue: 0, totalCash: 0, topHoldings: [], dayChange: 0, dayChangePercent: 0 });
     } finally {
       setLoading(false);
     }
@@ -105,15 +83,9 @@ const Dashboard = ({ showEquityChart = true }) => {
               <DollarSign className="text-green-500" size={24} />
             </div>
           </div>
-          <div
-            className={`flex items-center gap-2 text-sm ${
-              isPositive ? "text-green-400" : "text-red-400"
-            }`}
-          >
+          <div className={`flex items-center gap-2 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
             {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-            <span className="font-semibold">
-              ${dashboardData.dayChange.toLocaleString()}
-            </span>
+            <span className="font-semibold">${dashboardData.dayChange.toLocaleString()}</span>
             <span>({dashboardData.dayChangePercent}%)</span>
             <span className="text-gray-500 ml-1">Today</span>
           </div>
@@ -136,7 +108,7 @@ const Dashboard = ({ showEquityChart = true }) => {
         </div>
       </div>
 
-      {/* Equity Chart (optional) */}
+      {/* Equity Chart */}
       {showEquityChart && <EquityAreaChart />}
 
       {/* Top Holdings Table */}
@@ -162,27 +134,16 @@ const Dashboard = ({ showEquityChart = true }) => {
                       <div className="font-bold text-white">{stock.symbol ?? "—"}</div>
                       <div className="text-xs text-gray-500">{stock.name ?? "—"}</div>
                     </td>
-                    <td className="p-4 text-gray-300">
-                      ${stock.currentPrice?.toFixed(2) ?? "—"}
+                    <td className="p-4 text-gray-300">${stock.currentPrice?.toFixed(2) ?? "—"}</td>
+                    <td className={`p-4 font-medium ${stock.unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {stock.unrealizedPnl >= 0 ? "+" : ""}{stock.unrealizedPnl?.toFixed(2) ?? "—"}
                     </td>
-                    <td
-                      className={`p-4 font-medium ${
-                        stock.unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"
-                      }`}
-                    >
-                      {stock.unrealizedPnl >= 0 ? "+" : ""}
-                      {stock.unrealizedPnl?.toFixed(2) ?? "—"}
-                    </td>
-                    <td className="p-4 text-right font-medium text-white">
-                      ${stock.marketValue?.toLocaleString() ?? "0"}
-                    </td>
+                    <td className="p-4 text-right font-medium text-white">${stock.marketValue?.toLocaleString() ?? "0"}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="text-center text-gray-500 p-4">
-                    No holdings yet. Add your first asset to get started!
-                  </td>
+                  <td colSpan={4} className="text-center text-gray-500 p-4">No holdings yet. Add your first asset to get started!</td>
                 </tr>
               )}
             </tbody>
