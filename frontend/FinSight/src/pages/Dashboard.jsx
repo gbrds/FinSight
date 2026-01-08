@@ -11,6 +11,7 @@ const Dashboard = ({ showEquityChart = true }) => {
     topHoldings: [],
     dayChange: 0,
     dayChangePercent: 0,
+    equityCurve: [],
   });
   const [error, setError] = useState(null);
 
@@ -22,7 +23,7 @@ const Dashboard = ({ showEquityChart = true }) => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No login token found. Please log in.");
 
-      const res = await authFetch("/api/portfolio-summary");
+      const res = await authFetch("/api/dashboard"); // new route
       if (res.status === 401) {
         throw new Error("Session expired. Please log in again.");
       }
@@ -30,26 +31,26 @@ const Dashboard = ({ showEquityChart = true }) => {
 
       const data = await res.json();
 
-      const totalCash = data.portfolios?.reduce((sum, p) => sum + (p.cash ?? 0), 0) || 0;
-      const totalValue = data.totalValueAll ?? 0;
-
-      const allPositions = data.portfolios?.flatMap((p) => p.positions || []).map((pos) => ({
-        uniqueKey: `${pos.portfolio_id}-${pos.symbol}`,
-        symbol: pos.symbol,
-        name: pos.name ?? pos.symbol,
-        currentPrice: pos.price ?? 0,
-        quantity: pos.quantity ?? 0,
-        marketValue: (pos.price ?? 0) * (pos.quantity ?? 0),
-        unrealizedPnl: ((pos.price ?? 0) - (pos.avg_buy_price ?? 0)) * (pos.quantity ?? 0),
-      })) || [];
-
-      const topHoldings = allPositions.sort((a, b) => b.marketValue - a.marketValue).slice(0, 5);
-
-      setDashboardData({ totalValue, totalCash, topHoldings, dayChange: 0, dayChangePercent: 0 });
+      // directly use backend data
+      setDashboardData({
+        totalValue: data.totalValue ?? 0,
+        totalCash: data.totalCash ?? 0,
+        topHoldings: data.topHoldings ?? [],
+        dayChange: data.dayChange ?? 0,
+        dayChangePercent: data.dayChangePercent ?? 0,
+        equityCurve: data.equityCurve ?? [],
+      });
     } catch (err) {
       console.error("Dashboard error:", err);
       setError(err.message || "Failed to load dashboard. Please try again.");
-      setDashboardData({ totalValue: 0, totalCash: 0, topHoldings: [], dayChange: 0, dayChangePercent: 0 });
+      setDashboardData({
+        totalValue: 0,
+        totalCash: 0,
+        topHoldings: [],
+        dayChange: 0,
+        dayChangePercent: 0,
+        equityCurve: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -109,7 +110,7 @@ const Dashboard = ({ showEquityChart = true }) => {
       </div>
 
       {/* Equity Chart */}
-      {showEquityChart && <EquityAreaChart />}
+      {showEquityChart && <EquityAreaChart data={dashboardData.equityCurve} />}
 
       {/* Top Holdings Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
