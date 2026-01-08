@@ -1,6 +1,6 @@
 // services/portfolioSummaryService.js
-import { getUserPortfolios } from './portfolioService.js';
-import { getPositionsByPortfolioId } from './portfolioPositionService.js'; // we'll need this
+import * as portfolioRepo from "../repositories/portfolioRepository.js";
+import { getPositionsByPortfolioId } from "./portfolioPositionService.js";
 
 /**
  * Fetches all portfolios for a user with computed total value
@@ -8,22 +8,21 @@ import { getPositionsByPortfolioId } from './portfolioPositionService.js'; // we
  */
 export async function getUserPortfoliosWithTotals(user_id) {
   try {
-    // 1️⃣ Get all portfolios
-    const portfolios = await getUserPortfolios(user_id);
+    // 1️⃣ Get all portfolios for the user
+    const portfolios = await portfolioRepo.findPortfoliosByUserId(user_id);
 
     // 2️⃣ For each portfolio, fetch positions and compute total value
     const portfoliosWithTotals = await Promise.all(
       portfolios.map(async (p) => {
         const positions = await getPositionsByPortfolioId(p.id);
 
-        // Sum positions value (quantity * price)
         const positionsValue = positions.reduce((sum, pos) => {
           const price = pos.price ?? 0;
           const qty = pos.quantity ?? 0;
           return sum + price * qty;
         }, 0);
 
-        const totalValue = (p.cash ?? 0) + positionsValue;
+        const totalValue = (p.cash_balance ?? 0) + positionsValue;
 
         return {
           ...p,
@@ -41,7 +40,7 @@ export async function getUserPortfoliosWithTotals(user_id) {
 
     return { portfolios: portfoliosWithTotals, totalValueAll };
   } catch (err) {
-    console.error('[portfolioSummaryService] getUserPortfoliosWithTotals error:', err);
+    console.error("[portfolioSummaryService] getUserPortfoliosWithTotals error:", err);
     return { portfolios: [], totalValueAll: 0 };
   }
 }

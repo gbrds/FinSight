@@ -11,7 +11,7 @@ const router = express.Router();
 
 /**
  * GET /api/portfolio/:id
- * Returns portfolio detail with positions
+ * Returns portfolio detail with positions and metrics
  */
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
@@ -19,6 +19,8 @@ router.get("/:id", authMiddleware, async (req, res) => {
     const user_id = req.user.id;
 
     const detail = await getPortfolioDetail({ portfolio_id, user_id });
+
+    if (!detail) return res.status(404).json({ error: "Portfolio not found" });
 
     res.json(detail);
   } catch (err) {
@@ -34,10 +36,10 @@ router.get("/:id", authMiddleware, async (req, res) => {
  */
 router.post("/:id/transaction", authMiddleware, async (req, res) => {
   try {
-    const userToken = req.user.token;
     const payload = req.body;
 
-    const result = await createTransaction(userToken, payload);
+    // Remove userToken — Prisma repo does not need it
+    const result = await createTransaction(payload);
 
     if (!result.transaction) {
       return res.status(400).json({ error: "Transaction failed" });
