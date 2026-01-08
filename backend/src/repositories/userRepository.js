@@ -26,8 +26,23 @@ export async function getActiveUserById(userId) {
  * Soft delete user profile
  */
 export async function softDeleteUserById(userId) {
-  return prisma.users.update({
-    where: { id: userId },   // ✅ use argument
-    data: { deleted: true },
-  });
+  if (!userId) throw new Error("softDeleteUserById: missing userId");
+
+  try {
+    const result = await prisma.users.updateMany({
+      where: { id: userId, deleted: false },
+      data: { deleted: true },
+    });
+
+    if (result.count === 0) {
+      console.warn(`[softDeleteUserById] No user deleted (already deleted or not found):`, userId);
+      return null;
+    }
+
+    console.log(`[softDeleteUserById] Soft deleted user:`, userId);
+    return true;
+  } catch (err) {
+    console.error(`[softDeleteUserById] Error deleting user ${userId}:`, err);
+    throw err;
+  }
 }

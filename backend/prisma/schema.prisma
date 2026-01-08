@@ -25,7 +25,7 @@ model finance_accounts {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model finance_categories {
   id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id              String                 @default(dbgenerated("auth.uid()")) @db.Uuid
+  user_id              String                 @db.Uuid
   name                 String
   color                String?
   created_at           DateTime               @default(now()) @db.Timestamp(6)
@@ -72,7 +72,7 @@ model pending_fetch {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model portfolio_equity_curve {
   id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  portfolio_id    String     @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portfolio_id    String     @db.Uuid
   timestamp       DateTime   @db.Timestamp(6)
   total_value     Decimal    @db.Decimal
   cash_balance    Decimal    @default(0) @db.Decimal
@@ -155,7 +155,7 @@ model transactions {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model users {
-  id                 String               @id @default(dbgenerated("auth.uid()")) @db.Uuid
+  id                 String               @id @db.Uuid
   display_name       String
   currency_default   String               @default("EUR")
   settings           Json?
