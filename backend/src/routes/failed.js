@@ -1,17 +1,11 @@
-// routes/failed.js
 import express from "express";
-import { supabaseAdmin as supabase } from "../clients/supabaseClient.js";
+import { FailedTickerRepository } from "../repositories/FailedTickerRepository.js";
 
 const router = express.Router();
 
 router.get("/failed", async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("failed_tickers") // or wherever you persist blacklisted tickers
-      .select("symbol");
-
-    if (error) return res.status(500).json({ error: error.message });
-
+    const data = await FailedTickerRepository.getAllSymbols();
     const failed = data?.map(r => r.symbol) || [];
     res.json({ failed });
   } catch (err) {
