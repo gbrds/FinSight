@@ -1,44 +1,34 @@
 // services/portfolioDetailService.js
-import { supabasePublic as supabase } from "../clients/supabaseClient.js";
-import { v4 as uuidv4 } from "uuid";
+import * as portfolioRepo from "../repositories/portfolioRepository.js";
 
 /**
  * Get portfolio details with positions and their calculated metrics
  */
 export async function getPortfolioDetail({ portfolio_id, user_id }) {
   try {
-    // 1️⃣ Get portfolio
-    const { data: portfolioArr, error: portErr } = await supabase
-      .from("portfolios")
-      .select("*")
-      .eq("id", portfolio_id)
-      .eq("user_id", user_id)
-      .limit(1);
-
-    if (portErr) throw portErr;
-    const portfolio = portfolioArr?.[0];
+    // 1️⃣ Fetch portfolio (user check included)
+    const portfolios = await portfolioRepo.findPortfoliosByUserId(user_id);
+    const portfolio = portfolios.find((p) => p.id === portfolio_id);
     if (!portfolio) return null;
 
-    // 2️⃣ Get positions for portfolio + live prices
-    const { data: positionsArr, error: posErr } = await supabase
-      .from("portfolio_positions")
-      .select(`
-        *,
-        live_prices:live_price_id(*)
-      `)
-      .eq("portfolio_id", portfolio_id);
-
-    if (posErr) throw posErr;
+    // 2️⃣ Fetch positions with metrics + live prices
+    const positionsRaw = await portfolioRepo.getPortfolioPositionsWithLivePrices(portfolio_id);
 
     // 3️⃣ Map positions with calculated metrics
-    const positions = positionsArr.map((pos) => {
+    const positions = positionsRaw.map((pos) => {
       const price = pos.live_prices?.price || 0;
-      const value = pos.quantity * price;
-      const totalPL = (price - pos.avg_buy_price) * pos.quantity;
-      const dayChange = pos.live_prices?.day_change ?? 0;
+      const quantity = Number(pos.quantity ?? 0);
+      const avgBuy = Number(pos.avg_buy_price ?? 0);
+
+      const value = quantity * price;
+      const totalPL = (price - avgBuy) * quantity;
+
+      const dayChange = Number(pos.live_prices?.day_change ?? 0);
 
       return {
         ...pos,
+        quantity,
+        avg_buy_price: avgBuy,
         price,
         value,
         totalPL,
@@ -60,7 +50,7 @@ export async function getPortfolioDetail({ portfolio_id, user_id }) {
       totals: { totalValue, totalGainLoss, dayChangeTotal },
     };
   } catch (err) {
-    console.error("[portfolioDetailService] getPortfolioDetail error:", err.message);
+    console.error("[portfolioDetailService] getPortfolioDetail error:", err);
     return null;
   }
 }
@@ -73,7 +63,7 @@ export async function createTransaction(userToken, payload) {
     const { addTransaction } = await import("./transactionService.js");
     return await addTransaction(userToken, payload);
   } catch (err) {
-    console.error("[portfolioDetailService] createTransaction error:", err.message);
+    console.error("[portfolioDetailService] createTransaction error:", err);
     return { transaction: null, updatedPosition: null };
   }
 }
@@ -86,7 +76,7 @@ export async function createPosition({ portfolio_id, symbol, user_id }) {
     const { addPosition } = await import("./portfolioPositionService.js");
     return await addPosition({ portfolio_id, symbol, user_id });
   } catch (err) {
-    console.error("[portfolioDetailService] createPosition error:", err.message);
+    console.error("[portfolioDetailService] createPosition error:", err);
     return null;
   }
 }

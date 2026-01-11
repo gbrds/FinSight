@@ -7,7 +7,6 @@ import {
   logoutUser,
   softDeleteUser,
 } from "../services/authService.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -100,7 +99,7 @@ router.post("/delete", async (req, res) => {
 });
 
 // ---------------- Verify token ----------------
-router.get("/verify", authMiddleware, (req, res) => {
+router.get("/verify", (req, res) => {
   res.json({
     valid: true,
     user: req.user,
