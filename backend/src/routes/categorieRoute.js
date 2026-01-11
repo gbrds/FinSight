@@ -1,4 +1,4 @@
-// routes/categorieRoute.js
+// src/routes/categorieRoute.js
 import express from "express";
 import {
   getCategories,
@@ -11,7 +11,7 @@ const router = express.Router();
 // GET /api/finance/categories
 router.get("/", async (req, res) => {
   try {
-    const categories = await getCategories(req.user.id, req.user.token);
+    const categories = await getCategories(req.user.id);
     res.json(categories);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -24,8 +24,9 @@ router.post("/", async (req, res) => {
     const { name, color } = req.body;
     if (!name) return res.status(400).json({ error: "Category name required" });
 
-    const category = await createCategory(req.user.id, req.user.token, name, color);
-    res.json(category);
+    const category = await createCategory(req.user.id, name, color);
+
+    res.status(201).json(category);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -35,7 +36,9 @@ router.post("/", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const categoryId = req.params.id;
-    await deleteCategory(req.user.id, req.user.token, categoryId);
+
+    await deleteCategory(req.user.id, categoryId);
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

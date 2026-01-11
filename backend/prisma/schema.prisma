@@ -39,7 +39,7 @@ model finance_transactions {
   account_id         String             @db.Uuid
   amount             Decimal            @db.Decimal
   currency           String
-  category_id        String             @db.Uuid
+  category_id        String?            @db.Uuid
   description        String
   merchant           String?
   tags               Json?
@@ -47,7 +47,7 @@ model finance_transactions {
   paid_at            DateTime           @db.Timestamp(6)
   source             String
   finance_accounts   finance_accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade)
-  finance_categories finance_categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  finance_categories finance_categories? @relation(fields: [category_id], references: [id], onDelete: SetNull)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

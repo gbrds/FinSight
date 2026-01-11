@@ -72,20 +72,34 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!session ? <Login setSession={setSession} /> : <Navigate to="/" />}
+          element={
+            !session ? <Login setSession={setSession} /> : <Navigate to="/" />
+          }
         />
 
         <Route
           path="/"
-          element={session ? <MainLayout setSession={setSession} /> : <Navigate to="/login" />}
+          element={
+            session ? (
+              <MainLayout setSession={setSession} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         >
           <Route index element={<Dashboard />} />
-          <Route path="portfolios" element={<PortfolioList session={session} />} />
+          <Route
+            path="portfolios"
+            element={<PortfolioList session={session} />}
+          />
           <Route path="portfolios/:id" element={<PortfolioDetail />} />
           <Route path="stocks" element={<MarketResearch />} />
           <Route path="stocks/:ticker" element={<StockDetail />} />
-          <Route path="finance" element={<Finance />} />
-          <Route path="settings" element={<Settings setSession={setSession} />} />
+          <Route path="finance" element={<Finance session={session} />} />
+          <Route
+            path="settings"
+            element={<Settings setSession={setSession} />}
+          />
         </Route>
       </Routes>
     </BrowserRouter>

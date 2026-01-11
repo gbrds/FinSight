@@ -13,12 +13,29 @@ const router = express.Router();
 router.post("/account", async (req, res) => {
   try {
     const userId = req.user.id;
-    const { accountName, initialBalance, type, currency } = req.body;
+    const { accountName, name, initialBalance, balance, type, currency } =
+      req.body;
 
-    if (!accountName) return res.status(400).json({ error: "Account name is required" });
+    const finalName = accountName || name;
+    const finalBalance = initialBalance || balance;
 
-    const result = await createBankAccount(userId, accountName, initialBalance, type, currency);
-    res.status(200).json({ message: result.created ? "Account created" : "Account exists", data: result.data });
+    if (!finalName)
+      return res.status(400).json({ error: "Account name is required" });
+
+    const result = await createBankAccount(
+      userId,
+      finalName,
+      finalBalance,
+      type,
+      currency
+    );
+
+    res
+      .status(200)
+      .json({
+        message: result.created ? "Account created" : "Account exists",
+        data: result.data,
+      });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -31,11 +48,18 @@ router.post("/transactions", async (req, res) => {
     const userId = req.user.id;
     const { accountId, transactions } = req.body;
 
-    if (!accountId) return res.status(400).json({ error: "Account ID is required" });
-    if (!Array.isArray(transactions) || transactions.length === 0) return res.status(400).json({ error: "Transactions required" });
+    if (!accountId)
+      return res.status(400).json({ error: "Account ID is required" });
+    if (!Array.isArray(transactions) || transactions.length === 0)
+      return res.status(400).json({ error: "Transactions required" });
 
     const data = await addTransactions(userId, accountId, transactions);
-    res.status(201).json({ message: `Successfully added ${data.length} transactions`, data });
+    res
+      .status(201)
+      .json({
+        message: `Successfully added ${data.length} transactions`,
+        data,
+      });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -49,7 +73,8 @@ router.put("/transactions/:id", async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    if (!updates || Object.keys(updates).length === 0) return res.status(400).json({ error: "No updates provided" });
+    if (!updates || Object.keys(updates).length === 0)
+      return res.status(400).json({ error: "No updates provided" });
 
     const updatedTx = await updateTransaction(userId, id, updates);
     res.json({ message: "Transaction updated", data: updatedTx });
@@ -93,7 +118,8 @@ router.get("/userdata", async (req, res) => {
     const userId = req.user.id;
     const data = await logUserFinanceData(userId);
 
-    if (!data) return res.status(404).json({ error: "Failed to retrieve user data" });
+    if (!data)
+      return res.status(404).json({ error: "Failed to retrieve user data" });
     res.json(data);
   } catch (err) {
     console.error(err);

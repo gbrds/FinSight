@@ -45,7 +45,9 @@ async function recalcAllPortfolios() {
     if (error) throw error;
     if (!portfolios?.length) return;
 
-    console.log(`[INIT] Recalculating metrics for ${portfolios.length} portfolios...`);
+    console.log(
+      `[INIT] Recalculating metrics for ${portfolios.length} portfolios...`
+    );
     for (const p of portfolios) {
       await recalcPortfolioMetrics(p.id);
       console.log(`[INIT] Metrics recalculated for portfolio ${p.id}`);
