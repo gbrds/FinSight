@@ -315,7 +315,7 @@ const Finance = ({ session }) => {
           >
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
-                {acc.name} (${acc.balance.toFixed(2)})
+                {acc.name} (${Number(acc.balance).toFixed(2)})
               </option>
             ))}
           </select>
