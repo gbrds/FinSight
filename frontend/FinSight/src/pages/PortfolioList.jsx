@@ -20,13 +20,9 @@ const PortfolioList = ({ session }) => {
     if (!session?.token) return;
 
     try {
-      const res = await authFetch("http://localhost:3001/api/portfolio-summary"); // ✅ new endpoint
-
+      const res = await authFetch("http://localhost:3001/api/portfolio-summary");
       if (!res.ok) throw new Error(`Failed to fetch portfolios (HTTP ${res.status})`);
-
       const data = await res.json();
-
-      // data: { portfolios: [...], totalValueAll: number }
       setPortfolios(data.portfolios || []);
     } catch (err) {
       console.error("Failed to fetch portfolios:", err.message);
@@ -40,10 +36,7 @@ const PortfolioList = ({ session }) => {
   }, [session]);
 
   const handleCreatePortfolio = async (name) => {
-    if (!session?.token) {
-      console.error("No session token available");
-      return;
-    }
+    if (!session?.token) return;
 
     try {
       const res = await fetch("http://localhost:3001/api/portfolio", {
@@ -56,7 +49,6 @@ const PortfolioList = ({ session }) => {
       });
 
       if (!res.ok) throw new Error(`Failed to create portfolio (HTTP ${res.status})`);
-
       const newPortfolio = await res.json();
       setPortfolios((prev) => [...prev, newPortfolio]);
       setIsModalOpen(false);
@@ -72,6 +64,15 @@ const PortfolioList = ({ session }) => {
       </div>
     );
 
+  // Formatting helpers
+  const formatUSD = (num) =>
+    Number(num || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const formatPercent = (num) =>
+    Number(num || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const totalValueAll = portfolios.reduce((sum, p) => sum + (p.totalValue || 0), 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,61 +87,64 @@ const PortfolioList = ({ session }) => {
         </button>
       </div>
 
-      {/* Optional total across all portfolios */}
+      {/* Total across all portfolios */}
       {portfolios.length > 0 && (
         <div className="text-white font-bold text-xl mb-4">
-          Total Portfolio Value: $
-          {portfolios
-            .reduce((sum, p) => sum + (p.totalValue ?? 0), 0)
-            .toLocaleString()}
+          Total Portfolio Value: ${formatUSD(totalValueAll)}
         </div>
       )}
 
       {/* Grid of Portfolios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {portfolios.map((portfolio) => (
-          <Link
-            to={`/portfolios/${portfolio.id}`}
-            key={portfolio.id}
-            className="group bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:border-green-500/50 transition-all hover:bg-gray-800/50"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-3 bg-gray-800 rounded-xl group-hover:bg-gray-700 transition-colors">
-                <Wallet className="text-green-500" size={24} />
-              </div>
-              <span className="px-2 py-1 bg-gray-800 text-xs text-gray-400 rounded uppercase font-semibold">
-                {portfolio.type || "Brokerage"}
-              </span>
-            </div>
+        {portfolios.map((portfolio) => {
+          const change = portfolio.change ?? 0;
+          const changePercent = portfolio.changePercent ?? 0;
+          const cash = portfolio.cash ?? 0;
+          const isPositive = change >= 0;
 
-            <h3 className="text-lg font-bold text-gray-100 mb-1 group-hover:text-green-400 transition-colors">
-              {portfolio.name}
-            </h3>
-            <div className="text-2xl font-bold text-white mb-4">
-              ${portfolio.totalValue?.toLocaleString() || 0}
-            </div>
+          return (
+            <Link
+              to={`/portfolios/${portfolio.id}`}
+              key={portfolio.id}
+              className="group bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:border-green-500/50 transition-all hover:bg-gray-800/50"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 bg-gray-800 rounded-xl group-hover:bg-gray-700 transition-colors">
+                  <Wallet className="text-green-500" size={24} />
+                </div>
+                <span className="px-2 py-1 bg-gray-800 text-xs text-gray-400 rounded uppercase font-semibold">
+                  {portfolio.type || "Brokerage"}
+                </span>
+              </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gray-800">
-              <div
-                className={cn(
-                  "flex items-center gap-1 text-sm font-medium",
-                  portfolio.change >= 0 ? "text-green-400" : "text-red-400"
-                )}
-              >
-                {portfolio.change >= 0 ? (
-                  <ArrowUpRight size={16} />
-                ) : (
-                  <ArrowDownRight size={16} />
-                )}
-                <span>{portfolio.changePercent ?? 0}%</span>
+              <h3 className="text-lg font-bold text-gray-100 mb-1 group-hover:text-green-400 transition-colors">
+                {portfolio.name}
+              </h3>
+              <div className="text-2xl font-bold text-white mb-4">
+                ${formatUSD(portfolio.totalValue)}
               </div>
-              <div className="text-sm text-gray-500 flex items-center gap-1">
-                <TrendingUp size={14} />
-                <span>${portfolio.cash?.toLocaleString() || 0} Cash</span>
+
+              <div className="flex justify-between items-center pt-4 border-t border-gray-800">
+                {/* % Change */}
+                <div
+                  className={cn(
+                    "flex items-center gap-1 text-sm font-medium",
+                    isPositive ? "text-green-400" : "text-red-400"
+                  )}
+                >
+                  {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                  <span>{formatPercent(changePercent)}%</span>
+                </div>
+
+                {/* Cash */}
+                <div className="text-sm text-gray-500 flex items-center gap-1">
+                  <TrendingUp size={14} />
+                  <span>${formatUSD(cash)} Cash</span>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
 
         {/* Add New Portfolio Card */}
         <button
@@ -155,12 +159,7 @@ const PortfolioList = ({ session }) => {
       </div>
 
       {/* Create Portfolio Modal */}
-      {isModalOpen && (
-        <CreatePortfolioModal
-          onClose={() => setIsModalOpen(false)}
-          onCreate={handleCreatePortfolio}
-        />
-      )}
+      {isModalOpen && <CreatePortfolioModal onClose={() => setIsModalOpen(false)} onCreate={handleCreatePortfolio} />}
     </div>
   );
 };

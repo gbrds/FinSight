@@ -16,7 +16,7 @@ import portfolioRecalcRouter from "./routes/portfolioRecalc.js";
 import financeRouter from "./routes/financeRoutes.js";
 import categorieRouter from "./routes/categorieRoute.js";
 import portfolioDetailRoute from "./routes/portfolioDetailRoute.js";
-import portfolioSummaryRoute from "./routes/portfolioSummaryRoute.js"; // <-- NEW
+import portfolioSummaryRoute from "./routes/portfolioSummaryRoute.js";
 
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 import { supabaseAdmin as supabase } from "./clients/supabaseClient.js";

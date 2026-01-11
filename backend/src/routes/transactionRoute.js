@@ -1,16 +1,17 @@
+// routes/transactionRoute.js
 import express from "express";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { addTransaction } from "../services/transactionService.js";
 
 const router = express.Router();
 
-// Protected route
-router.post("/", authMiddleware, async (req, res) => {
+// POST /api/transaction
+// Add a transaction to a portfolio position
+router.post("/", async (req, res) => {
   try {
-    const userToken = req.user.token; // must include token from authMiddleware
     const payload = req.body;
 
-    const result = await addTransaction(userToken, payload);
+    // Prisma repo does not need userToken anymore
+    const result = await addTransaction(payload);
 
     if (!result.transaction) {
       return res.status(400).json({ error: "Transaction failed" });
@@ -18,8 +19,8 @@ router.post("/", authMiddleware, async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error("[transactionRoute] error:", err.message);
-    res.status(500).json({ error: "Server error" });
+    console.error("[transactionRoute] POST / error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

@@ -1,6 +1,5 @@
 // src/routes/categorieRoute.js
 import express from "express";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 import {
   getCategories,
   createCategory,
@@ -10,7 +9,7 @@ import {
 const router = express.Router();
 
 // GET /api/finance/categories
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const categories = await getCategories(req.user.id);
     res.json(categories);
@@ -20,7 +19,7 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 // POST /api/finance/categories
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { name, color } = req.body;
     if (!name) return res.status(400).json({ error: "Category name required" });
@@ -34,7 +33,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/finance/categories/:id
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const categoryId = req.params.id;
 

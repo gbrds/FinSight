@@ -1,5 +1,5 @@
-import { supabaseAdmin as supabase } from "../clients/supabaseClient.js";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
+import * as repo from "../repositories/reportingRepository.js";
 
 /**
  * Fetch portfolio positions + metrics and aggregate totals
@@ -10,35 +10,14 @@ export async function getPortfolioReport(portfolio_id) {
   let totalUnrealized = 0;
   let totalRealized = 0;
   let totalPositionsValue = 0;
-  let cashBalance = 0; // if you track cash separately
+  let cashBalance = 0; // handled separately in portfolioMetrics
 
   try {
-    const { data: rows, error } = await supabase
-      .from('portfolio_positions')
-      .select(`
-        id,
-        symbol,
-        quantity,
-        avg_buy_price,
-        status,
-        realized_pnl,
-        portfolio_position_metrics (
-          current_price,
-          market_value,
-          unrealized_pnl,
-          unrealized_pnl_pct,
-          updated_at
-        )
-      `)
-      .eq('portfolio_id', portfolio_id);
+    const rows = await repo.getPortfolioPositionsWithMetrics(portfolio_id);
 
-    if (error) throw error;
-
-    positions = (rows || []).map(p => {
-      // Pick the latest metric by updated_at
-      const metrics = Array.isArray(p.portfolio_position_metrics) ? p.portfolio_position_metrics : [];
-      const latestMetric = metrics.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0] || {};
-
+    positions = rows.map((p) => {
+      // ✅ Use latest_metric from the repo
+      const latestMetric = p.latest_metric ?? {};
       const marketValue = latestMetric.market_value ?? 0;
       const unrealizedPnl = latestMetric.unrealized_pnl ?? 0;
 
@@ -57,7 +36,7 @@ export async function getPortfolioReport(portfolio_id) {
         unrealizedPnl,
         unrealizedPnlPct: latestMetric.unrealized_pnl_pct ?? 0,
         realizedPnl: p.realized_pnl ?? 0,
-        lastUpdated: latestMetric.updated_at ?? null
+        lastUpdated: latestMetric.updated_at ?? null,
       };
     });
   } catch (err) {
@@ -71,7 +50,7 @@ export async function getPortfolioReport(portfolio_id) {
     totalRealizedPnl: totalRealized,
     positions,
     totalPositionsValue,
-    cashBalance
+    cashBalance,
   };
 }
 
@@ -82,34 +61,23 @@ export async function snapshotPortfolioEquity(portfolio_id) {
   try {
     const report = await getPortfolioReport(portfolio_id);
 
-    // Check last snapshot to avoid duplicates
-    const { data: lastSnapshot } = await supabase
-      .from('portfolio_equity_curve')
-      .select('timestamp')
-      .eq('portfolio_id', portfolio_id)
-      .order('timestamp', { ascending: false })
-      .limit(1);
-
-    const now = new Date().toISOString();
-    if (lastSnapshot?.[0]?.timestamp === now) {
-      return { snapshotId: lastSnapshot[0].id, timestamp: now };
+    const lastSnapshot = await repo.getLastEquitySnapshot(portfolio_id);
+    const now = new Date();
+    if (lastSnapshot?.timestamp?.getTime() === now.getTime()) {
+      return { snapshotId: lastSnapshot.id, timestamp: now };
     }
 
     const snapshotId = uuidv4();
-    const { error } = await supabase
-      .from('portfolio_equity_curve')
-      .insert([{
-        id: snapshotId,
-        portfolio_id,
-        timestamp: now,
-        total_value: report.totalValue,
-        cash_balance: report.cashBalance,
-        positions_value: report.totalPositionsValue,
-        unrealized_pnl: report.totalUnrealizedPnl,
-        realized_pnl: report.totalRealizedPnl
-      }]);
-
-    if (error) throw error;
+    await repo.insertEquityCurve({
+      id: snapshotId,
+      portfolio_id,
+      timestamp: now,
+      total_value: report.totalValue,
+      cash_balance: report.cashBalance,
+      positions_value: report.totalPositionsValue,
+      unrealized_pnl: report.totalUnrealizedPnl,
+      realized_pnl: report.totalRealizedPnl,
+    });
 
     return { snapshotId, timestamp: now };
   } catch (err) {
@@ -123,52 +91,29 @@ export async function snapshotPortfolioEquity(portfolio_id) {
  */
 export async function getEquityCurve(portfolio_id, limit = 100) {
   try {
-    const { data, error } = await supabase
-      .from('portfolio_equity_curve')
-      .select('*')
-      .eq('portfolio_id', portfolio_id)
-      .order('timestamp', { ascending: true })
-      .limit(limit);
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+    return await repo.getEquityCurveByPortfolio(portfolio_id, limit);
   } catch (err) {
     console.error(`[reportingService] Failed fetch equity curve for ${portfolio_id}:`, err.message);
     return [];
   }
 }
 
+/**
+ * Fetch equity curve aggregated for a user
+ */
 export async function getUserEquityCurve(user_id, limit = 200) {
   try {
-    // 1️⃣ Fetch user portfolios
-    const { data: portfolios, error: pErr } = await supabase
-      .from("portfolios")
-      .select("id")
-      .eq("user_id", user_id);
-
-    if (pErr) throw pErr;
+    const portfolios = await repo.getUserPortfolios(user_id);
     if (!portfolios?.length) return [];
 
-    const portfolioIds = portfolios.map(p => p.id);
+    const portfolioIds = portfolios.map((p) => p.id);
+    const data = await repo.getEquityCurveByPortfolios(portfolioIds, limit);
 
-    // 2️⃣ Fetch equity curves
-    const { data, error } = await supabase
-      .from("portfolio_equity_curve")
-      .select("portfolio_id, timestamp, total_value")
-      .in("portfolio_id", portfolioIds)
-      .order("timestamp", { ascending: true })
-      .limit(limit * portfolioIds.length);
-
-    if (error) throw error;
-
-    // 3️⃣ Aggregate across portfolios
+    // Aggregate across portfolios by timestamp
     const aggregated = {};
-
     for (const row of data) {
       const t = row.timestamp;
-      if (!aggregated[t]) {
-        aggregated[t] = { date: t, totalValue: 0 };
-      }
+      if (!aggregated[t]) aggregated[t] = { date: t, totalValue: 0 };
       aggregated[t].totalValue += row.total_value ?? 0;
     }
 

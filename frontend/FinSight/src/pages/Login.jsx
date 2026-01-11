@@ -9,6 +9,7 @@ const Login = ({ setSession }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [emailConfirmNotice, setEmailConfirmNotice] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -21,6 +22,7 @@ const Login = ({ setSession }) => {
   const handleAuth = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setEmailConfirmNotice(false);
     setLoading(true);
 
     try {
@@ -38,17 +40,31 @@ const Login = ({ setSession }) => {
 
       if (!res.ok) throw new Error(data.error || "Authentication failed");
 
-      // Save session and tokens
-      const token = data.sessionToken || data.session?.access_token || "";
-      const refreshToken = data.refreshToken || data.session?.refresh_token || "";
-      const user = data.user;
+      // 🔐 SIGNUP FLOW WITH EMAIL CONFIRM
+      if (!isLogin && data.status === "EMAIL_CONFIRM_REQUIRED") {
+        setEmailConfirmNotice(true);
+        setIsLogin(true); // switch to login view
+        return;
+      }
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("refreshToken", refreshToken);
-      localStorage.setItem("userData", JSON.stringify(user));
+      // ✅ LOGGED IN (login OR signup without email confirm)
+      if (data.status !== "EMAIL_CONFIRM_REQUIRED") {
+        const token = data.sessionToken;      // must exist
+        const refreshToken = data.refreshToken;
+        const user = data.user;
 
-      setSession({ token, user });
-      navigate("/");
+        if (!token) throw new Error("No session token returned");
+
+        // Save to localStorage
+        localStorage.setItem("token", token);
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("userData", JSON.stringify(user));
+
+        // Update session in state
+        setSession({ token, user });
+
+        navigate("/"); // redirect to dashboard
+      }
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -56,6 +72,20 @@ const Login = ({ setSession }) => {
     }
   };
 
+  const handleResendConfirmation = async () => {
+    try {
+      if (!formData.email) return;
+      const res = await fetch(`${BACKEND_URL}/api/auth/resend-confirmation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      if (!res.ok) throw new Error("Failed to resend confirmation email");
+      alert("Confirmation email resent! Check your inbox.");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-4">
@@ -80,10 +110,23 @@ const Login = ({ setSession }) => {
             : "Start tracking your wealth today."}
         </p>
 
+        {/* ✅ Email confirm alert */}
+        {emailConfirmNotice && (
+          <div className="mb-4 text-sm text-green-400 text-center bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+            ✅ Account created! Please check your email and confirm your address
+            before logging in.
+            <button
+              onClick={handleResendConfirmation}
+              className="ml-2 underline text-green-200 hover:text-green-100"
+            >
+              Resend
+            </button>
+          </div>
+        )}
+
+        {/* ✅ Error message */}
         {errorMessage && (
-          <p className="text-red-500 text-sm mb-4 text-center">
-            {errorMessage}
-          </p>
+          <p className="text-red-500 text-sm mb-4 text-center">{errorMessage}</p>
         )}
 
         <form onSubmit={handleAuth} className="space-y-4">

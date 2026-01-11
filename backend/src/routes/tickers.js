@@ -4,28 +4,23 @@ import { supabaseAdmin as supabase } from "../clients/supabaseClient.js";
 
 const router = express.Router();
 
-router.get("/tickers", async (req, res) => {
+router.get("/tickers", async (_req, res) => {
   try {
-    // 1. Fetch all live prices
+    // 1. Live prices
     const { data: live, error: liveError } = await supabase
       .from("live_prices")
       .select("symbol");
 
-    if (liveError) {
-      return res.status(500).json({ error: liveError.message });
-    }
+    if (liveError) throw liveError;
 
-    // 2. Fetch pending tickers where fetched = false
+    // 2. Pending fetch (not fetched yet)
     const { data: pending, error: pendingError } = await supabase
       .from("pending_fetch")
       .select("symbol")
       .eq("fetched", false);
 
-    if (pendingError) {
-      return res.status(500).json({ error: pendingError.message });
-    }
+    if (pendingError) throw pendingError;
 
-    // 3. Combine lists for Python
     const tickers = [
       ...(live?.map(r => r.symbol) || []),
       ...(pending?.map(r => r.symbol) || []),
@@ -33,6 +28,7 @@ router.get("/tickers", async (req, res) => {
 
     res.json({ tickers });
   } catch (err) {
+    console.error("[/tickers]", err.message);
     res.status(500).json({ error: err.message });
   }
 });
