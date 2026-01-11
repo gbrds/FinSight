@@ -1,4 +1,4 @@
-import * as transactionRepo from "../repositories/portfolioRepository.js";
+import * as transactionRepo from "../repositories/transactionRepository.js";
 
 /**
  * Add a transaction to a portfolio position and update position metrics

@@ -1,13 +1,12 @@
 // routes/transactionRoute.js
 import express from "express";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { addTransaction } from "../services/transactionService.js";
 
 const router = express.Router();
 
 // POST /api/transaction
 // Add a transaction to a portfolio position
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const payload = req.body;
 

@@ -4,9 +4,6 @@ import * as portfolioRepo from "../repositories/portfolioRepository.js";
 
 /**
  * Add a position to a portfolio
- * - Enforces symbol uppercase
- * - Links live_price_id if exists
- * - Creates row with quantity = 0, avg_buy_price = 0, status = open
  */
 export async function addPosition({ portfolio_id, symbol, user_id }) {
   try {
@@ -26,7 +23,6 @@ export async function addPosition({ portfolio_id, symbol, user_id }) {
     const live_price_id = livePrice?.id ?? null;
 
     // 3️⃣ Insert portfolio position
-    const now = new Date();
     const positionData = {
       id: uuidv4(),
       portfolio_id,
@@ -37,7 +33,6 @@ export async function addPosition({ portfolio_id, symbol, user_id }) {
       status: "open",
       opened_at: null,
       closed_at: null,
-      last_updated: now,
     };
 
     const inserted = await portfolioRepo.insertPortfolioPosition(positionData);
@@ -50,7 +45,7 @@ export async function addPosition({ portfolio_id, symbol, user_id }) {
 }
 
 /**
- * Fetch positions by portfolio_id with live prices and metrics
+ * Fetch positions by portfolio_id
  */
 export async function getPositionsByPortfolioId(portfolio_id) {
   try {
@@ -60,7 +55,9 @@ export async function getPositionsByPortfolioId(portfolio_id) {
       ...pos,
       quantity: Number(pos.quantity ?? 0),
       avg_buy_price: Number(pos.avg_buy_price ?? 0),
+      realized_pnl: Number(pos.realized_pnl ?? 0),
       price: Number(pos.live_prices?.price ?? 0),
+      day_change: Number(pos.live_prices?.day_change ?? 0),
     }));
   } catch (err) {
     console.error("[portfolioPositionService] getPositionsByPortfolioId error:", err);

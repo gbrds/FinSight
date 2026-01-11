@@ -1,11 +1,10 @@
 import express from "express";
 import * as dashboardService from "../services/dashboardService.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 // GET /api/dashboard
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const dashboardData = await dashboardService.getUserDashboard(req.user.id);
     res.json(dashboardData);

@@ -1,27 +1,49 @@
 // src/repositories/reportingRepository.js
 import prisma from "../clients/prismaClient.js";
 
-// Fetch positions + latest metrics for a portfolio
+/**
+ * Fetch positions with latest metric for a portfolio
+ */
 export async function getPortfolioPositionsWithMetrics(portfolio_id) {
-  return prisma.portfolio_positions.findMany({
+  const positions = await prisma.portfolio_positions.findMany({
     where: { portfolio_id },
     include: {
-      portfolio_position_metrics: {
-        orderBy: { updated_at: "desc" },
-        take: 1,
-      },
+      portfolio_position_metrics: true,
     },
+  });
+
+  return positions.map((pos) => {
+    let latestMetric = null;
+
+    if (Array.isArray(pos.portfolio_position_metrics)) {
+      latestMetric =
+        pos.portfolio_position_metrics
+          .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0] ??
+        null;
+    } else {
+      // one-to-one relation
+      latestMetric = pos.portfolio_position_metrics ?? null;
+    }
+
+    return {
+      ...pos,
+      latest_metric: latestMetric,
+    };
   });
 }
 
-// Insert equity curve snapshot
+/**
+ * Insert equity curve snapshot
+ */
 export async function insertEquityCurve(snapshot) {
   return prisma.portfolio_equity_curve.create({
     data: snapshot,
   });
 }
 
-// Fetch last equity curve snapshot to avoid duplicates
+/**
+ * Fetch last equity curve snapshot to avoid duplicates
+ */
 export async function getLastEquitySnapshot(portfolio_id) {
   return prisma.portfolio_equity_curve.findFirst({
     where: { portfolio_id },
@@ -29,7 +51,9 @@ export async function getLastEquitySnapshot(portfolio_id) {
   });
 }
 
-// Fetch equity curve for a portfolio
+/**
+ * Fetch equity curve for a portfolio
+ */
 export async function getEquityCurveByPortfolio(portfolio_id, limit = 100) {
   return prisma.portfolio_equity_curve.findMany({
     where: { portfolio_id },
@@ -38,7 +62,9 @@ export async function getEquityCurveByPortfolio(portfolio_id, limit = 100) {
   });
 }
 
-// Fetch all portfolios for a user
+/**
+ * Fetch all portfolios for a user
+ */
 export async function getUserPortfolios(user_id) {
   return prisma.portfolios.findMany({
     where: { user_id },
@@ -46,7 +72,9 @@ export async function getUserPortfolios(user_id) {
   });
 }
 
-// Fetch equity curves for multiple portfolio IDs
+/**
+ * Fetch equity curves for multiple portfolio IDs
+ */
 export async function getEquityCurveByPortfolios(portfolioIds, limit = 100) {
   return prisma.portfolio_equity_curve.findMany({
     where: { portfolio_id: { in: portfolioIds } },

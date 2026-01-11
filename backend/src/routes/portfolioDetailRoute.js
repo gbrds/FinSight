@@ -13,7 +13,7 @@ const router = express.Router();
  * GET /api/portfolio/:id
  * Returns portfolio detail with positions and metrics
  */
-router.get("/:id", authMiddleware, async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const portfolio_id = req.params.id;
     const user_id = req.user.id;
@@ -34,7 +34,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
  * Add a transaction to a position
  * Body: { position_id, type, quantity, price, fee?, currency? }
  */
-router.post("/:id/transaction", authMiddleware, async (req, res) => {
+router.post("/:id/transaction", async (req, res) => {
   try {
     const payload = req.body;
 
@@ -57,7 +57,7 @@ router.post("/:id/transaction", authMiddleware, async (req, res) => {
  * Add a new position to a portfolio
  * Body: { symbol }
  */
-router.post("/:id/position", authMiddleware, async (req, res) => {
+router.post("/:id/position", async (req, res) => {
   try {
     const portfolio_id = req.params.id;
     const symbol = req.body.symbol;

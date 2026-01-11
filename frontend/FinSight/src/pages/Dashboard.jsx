@@ -23,7 +23,7 @@ const Dashboard = ({ showEquityChart = true }) => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No login token found. Please log in.");
 
-      const res = await authFetch("/api/dashboard"); // new route
+      const res = await authFetch("/api/dashboard");
       if (res.status === 401) {
         throw new Error("Session expired. Please log in again.");
       }
@@ -31,7 +31,6 @@ const Dashboard = ({ showEquityChart = true }) => {
 
       const data = await res.json();
 
-      // directly use backend data
       setDashboardData({
         totalValue: data.totalValue ?? 0,
         totalCash: data.totalCash ?? 0,
@@ -67,6 +66,12 @@ const Dashboard = ({ showEquityChart = true }) => {
 
   const isPositive = dashboardData.dayChange >= 0;
 
+  const formatUSD = (num) =>
+    Number(num || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const formatPercent = (num) =>
+    Number(num || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="space-y-6">
       {/* Top Summary Cards */}
@@ -76,9 +81,7 @@ const Dashboard = ({ showEquityChart = true }) => {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-gray-400 text-sm font-medium">Total Portfolio Value</p>
-              <h2 className="text-3xl font-bold text-white mt-1">
-                ${dashboardData.totalValue.toLocaleString()}
-              </h2>
+              <h2 className="text-3xl font-bold text-white mt-1">${formatUSD(dashboardData.totalValue)}</h2>
             </div>
             <div className="p-3 bg-green-500/10 rounded-lg">
               <DollarSign className="text-green-500" size={24} />
@@ -86,8 +89,8 @@ const Dashboard = ({ showEquityChart = true }) => {
           </div>
           <div className={`flex items-center gap-2 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
             {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-            <span className="font-semibold">${dashboardData.dayChange.toLocaleString()}</span>
-            <span>({dashboardData.dayChangePercent}%)</span>
+            <span className="font-semibold">${formatUSD(dashboardData.dayChange)}</span>
+            <span>({formatPercent(dashboardData.dayChangePercent)}%)</span>
             <span className="text-gray-500 ml-1">Today</span>
           </div>
         </div>
@@ -97,9 +100,7 @@ const Dashboard = ({ showEquityChart = true }) => {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-gray-400 text-sm font-medium">Buying Power</p>
-              <h2 className="text-3xl font-bold text-white mt-1">
-                ${dashboardData.totalCash.toLocaleString()}
-              </h2>
+              <h2 className="text-3xl font-bold text-white mt-1">${formatUSD(dashboardData.totalCash)}</h2>
             </div>
             <div className="p-3 bg-blue-500/10 rounded-lg">
               <Activity className="text-blue-500" size={24} />
@@ -129,22 +130,30 @@ const Dashboard = ({ showEquityChart = true }) => {
             </thead>
             <tbody className="divide-y divide-gray-800">
               {dashboardData.topHoldings.length > 0 ? (
-                dashboardData.topHoldings.map((stock) => (
-                  <tr key={stock.uniqueKey} className="hover:bg-gray-800/50 transition-colors">
-                    <td className="p-4">
-                      <div className="font-bold text-white">{stock.symbol ?? "—"}</div>
-                      <div className="text-xs text-gray-500">{stock.name ?? "—"}</div>
-                    </td>
-                    <td className="p-4 text-gray-300">${stock.currentPrice?.toFixed(2) ?? "—"}</td>
-                    <td className={`p-4 font-medium ${stock.unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {stock.unrealizedPnl >= 0 ? "+" : ""}{stock.unrealizedPnl?.toFixed(2) ?? "—"}
-                    </td>
-                    <td className="p-4 text-right font-medium text-white">${stock.marketValue?.toLocaleString() ?? "0"}</td>
-                  </tr>
-                ))
+                dashboardData.topHoldings.map((stock) => {
+                  const price = Number(stock.currentPrice) || 0;
+                  const pnl = Number(stock.unrealizedPnl) || 0;
+                  const value = Number(stock.marketValue) || 0;
+
+                  return (
+                    <tr key={stock.uniqueKey} className="hover:bg-gray-800/50 transition-colors">
+                      <td className="p-4">
+                        <div className="font-bold text-white">{stock.symbol ?? "—"}</div>
+                        <div className="text-xs text-gray-500">{stock.name ?? "—"}</div>
+                      </td>
+                      <td className="p-4 text-gray-300">${formatUSD(price)}</td>
+                      <td className={`p-4 font-medium ${pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {pnl >= 0 ? "+" : ""}{formatUSD(pnl)}
+                      </td>
+                      <td className="p-4 text-right font-medium text-white">${formatUSD(value)}</td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={4} className="text-center text-gray-500 p-4">No holdings yet. Add your first asset to get started!</td>
+                  <td colSpan={4} className="text-center text-gray-500 p-4">
+                    No holdings yet. Add your first asset to get started!
+                  </td>
                 </tr>
               )}
             </tbody>

@@ -1,29 +1,51 @@
-import prisma from "../clients/prismaClient.js";
+import { supabaseAdmin } from "../clients/supabaseClient.js";
 
 export const LivePriceRepository = {
   async upsertPrice(symbol, price, currency = "USD", scrapedAt = new Date()) {
-    return prisma.live_prices.upsert({
-      where: { symbol },
-      update: { price, currency, scraped_at: scrapedAt },
-      create: { symbol, price, currency, scraped_at: scrapedAt },
-    });
+    const { error } = await supabaseAdmin
+      .from("live_prices")
+      .upsert(
+        {
+          symbol,
+          price,
+          currency,
+          scraped_at: scrapedAt,
+        },
+        { onConflict: "symbol" }
+      );
+
+    if (error) throw error;
   },
 
   async insertHistory(symbol, price, recordedAt = new Date()) {
-    return prisma.price_history.create({
-      data: { symbol, price, recorded_at: recordedAt },
-    });
+    const { error } = await supabaseAdmin
+      .from("price_history")
+      .insert({
+        symbol,
+        price,
+        recorded_at: recordedAt,
+      });
+
+    if (error) throw error;
   },
 
   async deletePendingFetch(symbol) {
-    return prisma.pending_fetch.deleteMany({ where: { symbol } });
+    const { error } = await supabaseAdmin
+      .from("pending_fetch")
+      .delete()
+      .eq("symbol", symbol);
+
+    if (error) throw error;
   },
 
   async markPendingFetched(symbol) {
-    return prisma.pending_fetch.upsert({
-      where: { symbol },
-      update: { fetched: true },
-      create: { symbol, fetched: true },
-    });
+    const { error } = await supabaseAdmin
+      .from("pending_fetch")
+      .upsert(
+        { symbol, fetched: true },
+        { onConflict: "symbol" }
+      );
+
+    if (error) throw error;
   },
 };

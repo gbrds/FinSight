@@ -1,11 +1,10 @@
 import express from "express";
 import { supabasePublic as supabase } from "../clients/supabaseClient.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 // now token validation is in middleware
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { data: profile, error: profileError } = await supabase
       .from("users")
