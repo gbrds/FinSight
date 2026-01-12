@@ -1,4 +1,4 @@
-// services/dashboardService.js
+// src/services/dashboardService.js
 import { recalcPortfolioMetrics } from './portfolioMetricsAtomicService.js';
 import * as portfolioService from './portfolioService.js';
 import * as reportingService from './reportingService.js';
@@ -15,6 +15,7 @@ export async function getUserDashboard(userId) {
         topHoldings: [],
         dayChange: 0,
         dayChangePercent: 0,
+        equityCurve: [],
         message: "No user ID provided. Please log in.",
       };
     }
@@ -27,6 +28,7 @@ export async function getUserDashboard(userId) {
         topHoldings: [],
         dayChange: 0,
         dayChangePercent: 0,
+        equityCurve: [],
         message: "You have no portfolios yet. Add your first portfolio to get started.",
       };
     }
@@ -62,13 +64,11 @@ export async function getUserDashboard(userId) {
           if (!positionsMap.has(key)) {
             positionsMap.set(key, { ...pos, portfolioIds: [portfolio.id] });
           } else {
-            // merge values if same symbol exists
             const existing = positionsMap.get(key);
             existing.marketValue += pos.marketValue ?? 0;
             existing.unrealizedPnl += pos.unrealizedPnl ?? 0;
             existing.quantity += pos.quantity ?? 0;
             existing.portfolioIds.push(portfolio.id);
-            // keep latest currentPrice
             existing.currentPrice = pos.currentPrice ?? existing.currentPrice;
           }
         }
@@ -80,7 +80,6 @@ export async function getUserDashboard(userId) {
     allPositions.sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0));
     const topHoldings = allPositions.slice(0, 10).map(pos => ({
       ...pos,
-      // Generate a unique key for React
       uniqueKey: `${pos.symbol}-${pos.portfolioIds.join('-')}`,
     }));
 
@@ -88,12 +87,21 @@ export async function getUserDashboard(userId) {
     const dayChange = allPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl ?? 0), 0);
     const dayChangePercent = totalValue ? (dayChange / (totalValue - dayChange)) * 100 : 0;
 
+    // Fetch equity curve for the last 7 days
+    let equityCurve = [];
+    try {
+      equityCurve = await reportingService.getUserEquityCurve(userId);
+    } catch (err) {
+      console.warn(`[dashboardService] Failed fetch equity curve for user ${userId}:`, err.message);
+    }
+
     return {
       totalValue,
       totalCash,
       topHoldings,
       dayChange,
       dayChangePercent,
+      equityCurve,
       message: topHoldings.length === 0 ? "You have no holdings yet. Add your first asset to get started." : null,
     };
   } catch (err) {
@@ -104,6 +112,7 @@ export async function getUserDashboard(userId) {
       topHoldings: [],
       dayChange: 0,
       dayChangePercent: 0,
+      equityCurve: [],
       message: "Failed to fetch dashboard. Please try again later.",
     };
   }

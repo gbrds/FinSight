@@ -101,27 +101,32 @@ export async function getEquityCurve(portfolio_id, limit = 100) {
 /**
  * Fetch equity curve aggregated for a user
  */
-export async function getUserEquityCurve(user_id, limit = 200) {
-  try {
-    const portfolios = await repo.getUserPortfolios(user_id);
-    if (!portfolios?.length) return [];
+export async function getUserEquityCurve(user_id) {
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
 
-    const portfolioIds = portfolios.map((p) => p.id);
-    const data = await repo.getEquityCurveByPortfolios(portfolioIds, limit);
+  const portfolios = await repo.getUserPortfolios(user_id);
+  if (!portfolios?.length) return [];
 
-    // Aggregate across portfolios by timestamp
-    const aggregated = {};
-    for (const row of data) {
-      const t = row.timestamp;
-      if (!aggregated[t]) aggregated[t] = { date: t, totalValue: 0 };
-      aggregated[t].totalValue += row.total_value ?? 0;
+  const portfolioIds = portfolios.map(p => p.id);
+  const rows = await repo.getEquityCurveByPortfolios(portfolioIds);
+
+  const aggregated = {};
+
+  for (const row of rows) {
+    if (new Date(row.timestamp) < since) continue;
+
+    const key = row.timestamp.toISOString();
+    if (!aggregated[key]) {
+      aggregated[key] = {
+        date: row.timestamp,
+        totalValue: 0,
+      };
     }
 
-    return Object.values(aggregated).sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
-    );
-  } catch (err) {
-    console.error("[reportingService] getUserEquityCurve error:", err.message);
-    return [];
+    aggregated[key].totalValue += Number(row.total_value ?? 0);
   }
+
+  return Object.values(aggregated)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 }

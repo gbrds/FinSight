@@ -72,6 +72,11 @@ const Dashboard = ({ showEquityChart = true }) => {
   const formatPercent = (num) =>
     Number(num || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  console.log(
+    "[Dashboard] equityCurve",
+    dashboardData.equityCurve.slice(0, 5)
+  );
+
   return (
     <div className="space-y-6">
       {/* Top Summary Cards */}
